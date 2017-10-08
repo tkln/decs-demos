@@ -1,12 +1,12 @@
 CFLAGS+=-std=c99 -g -I decs/
 LDFLAGS+=-lSDL2 -lSDL2_ttf -lm
-OBJS+= game.o ttf.o
+OBJS+= ttf.o
 
 include decs/Makefile.include
 
-all: game
+all: particle
 
-game: $(OBJS)
+particle: particle.o $(OBJS)
 
 clean:
-	rm -f $(OBJS) game
+	rm -f $(OBJS) particle
