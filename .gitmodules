@@ -1,0 +1,3 @@
+[submodule "decs"]
+	path = decs
+	url = https://github.com/tkln/decs
