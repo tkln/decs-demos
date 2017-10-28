@@ -52,7 +52,7 @@ static struct system_reg render_sys = {
     .name       = "render",
     .comp_names = STR_ARR("phys", "color"),
     .func       = render_tick,
-    .dep_names  = STR_ARR("phys"),
+    .dep_names  = STR_ARR("phys_post_col"),
 };
 
 void create_particle(struct decs *decs, struct comp_ids *comp_ids)
@@ -115,6 +115,15 @@ int main(void)
     int runnig = 1;
     int i;
     int mx, my;
+    int ret = 0;
+    const struct system_reg *systems[] = {
+        &phys_gravity_sys,
+        &phys_drag_sys,
+        &phys_pre_col_sys,
+        &phys_wall_col_sys,
+        &phys_post_col_sys,
+        &render_sys,
+    };
 
     struct render_ctx_aux render_ctx_aux;
 
@@ -140,10 +149,14 @@ int main(void)
     comp_ids.color = decs_register_comp(&decs, "color",
                                         sizeof(struct color_comp));
 
-    decs_register_system(&decs, &phys_gravity_sys);
-    decs_register_system(&decs, &phys_drag_sys);
-    decs_register_system(&decs, &phys_sys);
-    decs_register_system(&decs, &render_sys);
+    for (i = 0; i < sizeof(systems) / sizeof(systems[0]); ++i) {
+        ret = decs_register_system(&decs, systems[i], NULL);
+        if (ret < 0) {
+            fprintf(stderr, "Error occurred while registering system \"%s\"\n",
+                    systems[i]->name);
+            goto sys_reg_fail;
+        }
+    }
 
     while (runnig) {
         while (SDL_PollEvent(&event)) {
@@ -166,8 +179,9 @@ int main(void)
 
     decs_cleanup(&decs);
 
+sys_reg_fail:
     SDL_DestroyWindow(win);
     SDL_Quit();
 
-    return 0;
+    return ret;
 }

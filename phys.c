@@ -40,11 +40,7 @@ void phys_gravity_tick(struct decs *decs, uint64_t eid, void *func_data)
     struct phys_gravity_ctx *ctx = func_data;
     struct phys_comp *phys = ctx->phys_base + eid;
 
-#if 1
-    phys->force.y += 9.81f; //= vec3_add(phys->force, (struct vec3) { 0.0f, 9.81f, 0.0f });
-#else
-    phys->force = vec3_add(phys->force, (struct vec3) { 0.0f, 9.81f, 0.0f });
-#endif
+    phys->force.y += 9.81f;
 }
 
 const struct system_reg phys_gravity_sys = {
@@ -58,17 +54,16 @@ static void phys_euler_tick(struct phys_comp *phys, struct vec3 force, float dt)
     struct vec3 acc = vec3_muls(force, 1.0f / phys->mass);
 
     struct vec3 d_vel = vec3_muls(acc, dt);
-    struct vec3 d_pos = vec3_muls(phys->vel, dt);
 
     phys->vel = vec3_add(phys->vel, d_vel);
-    phys->pos = vec3_add(phys->pos, d_pos);
+    phys->d_pos = vec3_muls(phys->vel, dt);
 }
 
 struct phys_ctx {
     struct phys_comp *phys_base;
 };
 
-void phys_tick(struct decs *decs, uint64_t eid, void *func_data)
+void phys_pre_col_tick(struct decs *decs, uint64_t eid, void *func_data)
 {
     struct phys_ctx *phys_ctx = func_data;
     struct phys_comp *phys = phys_ctx->phys_base + eid;
@@ -78,21 +73,47 @@ void phys_tick(struct decs *decs, uint64_t eid, void *func_data)
     phys_euler_tick(phys, phys->force, dt);
 
     phys->force = (struct vec3){ 0.0f, 0.0f, 0.0f };
-
-    /* TODO remove these */
-    if (phys->pos.y > 1.0f) {
-        phys->vel.y *= -0.9f;
-    }
-    if (phys->pos.x > 1.0f)
-        phys->pos.x -= 1.0f;
-    if (phys->pos.x < 0.0f)
-        phys->pos.x += 1.0f;
 }
 
-const struct system_reg phys_sys = {
-    .name       = "phys",
+const struct system_reg phys_pre_col_sys = {
+    .name       = "phys_pre_col",
     .comp_names = STR_ARR("phys"),
-    .func       = phys_tick,
+    .func       = phys_pre_col_tick,
     .dep_names  = STR_ARR("phys_drag", "phys_gravity"),
 };
 
+void phys_wall_col_tick(struct decs *decs, uint64_t eid, void *func_data)
+{
+    struct phys_ctx *phys_ctx = func_data;
+    struct phys_comp *phys = phys_ctx->phys_base + eid;
+    struct vec3 pos = vec3_add(phys->pos, phys->d_pos);
+
+    if (pos.y > 1.0f)
+        phys->vel.y *= -0.9f;
+    if (pos.x > 1.0f)
+        phys->pos.x -= 1.0f;
+    if (pos.x < 0.0f)
+        phys->pos.x += 1.0f;
+}
+
+const struct system_reg phys_wall_col_sys = {
+    .name       = "phys_wall_col",
+    .comp_names = STR_ARR("phys"),
+    .func       = phys_wall_col_tick,
+    .dep_names  = STR_ARR("phys_pre_col"),
+};
+
+void phys_post_col_tick(struct decs *decs, uint64_t eid, void *func_data)
+{
+    struct phys_ctx *phys_ctx = func_data;
+    struct phys_comp *phys = phys_ctx->phys_base + eid;
+
+    phys->pos = vec3_add(phys->pos, phys->d_pos);
+}
+
+const struct system_reg phys_post_col_sys = {
+    .name       = "phys_post_col",
+    .comp_names = STR_ARR("phys"),
+    .func       = phys_post_col_tick,
+    .dep_names  = STR_ARR("phys_wall_col"),
+};
