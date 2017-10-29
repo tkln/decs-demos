@@ -40,7 +40,7 @@ void phys_gravity_tick(struct decs *decs, uint64_t eid, void *func_data)
     struct phys_gravity_ctx *ctx = func_data;
     struct phys_comp *phys = ctx->phys_base + eid;
 
-    phys->force.y += 9.81f;
+    phys->force.y -= 9.81f;
 }
 
 const struct system_reg phys_gravity_sys = {
@@ -88,12 +88,14 @@ void phys_wall_col_tick(struct decs *decs, uint64_t eid, void *func_data)
     struct phys_comp *phys = phys_ctx->phys_base + eid;
     struct vec3 pos = vec3_add(phys->pos, phys->d_pos);
 
-    if (pos.y > 1.0f)
+    if (pos.y > 1.0f || pos.y < -1.0f)
         phys->vel.y *= -0.9f;
+#if 0
     if (pos.x > 1.0f)
         phys->pos.x -= 1.0f;
-    if (pos.x < 0.0f)
+    if (pos.x < -1.0f)
         phys->pos.x += 1.0f;
+#endif
 }
 
 const struct system_reg phys_wall_col_sys = {
