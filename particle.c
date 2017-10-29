@@ -29,43 +29,14 @@ struct comp_ids {
     uint64_t color;
 };
 
-struct render_ctx_aux {
-    SDL_Window *win;
-    SDL_Renderer *rend;
-};
-
-struct render_ctx {
-    struct render_ctx_aux *aux;
-    struct phys_comp *phys_base;
-    struct color_comp *color_base;
-};
-
 static const GLfloat triangle_verts[] = {
-    -0.5f, -0.5f, 0.0f,
-     0.5f, -0.5f, 0.0f,
-     0.0f,  0.5f, 0.0f,
+    -0.04f, -0.04f, 0.0f,
+     0.04f, -0.04f, 0.0f,
+    -0.04f,  0.04f, 0.0f,
+     0.04f,  0.04f, 0.0f,
 };
 
 int win_w = 1280, win_h = 720;
-
-static void render_tick(struct decs *decs, uint64_t eid, void *func_data)
-{
-    struct render_ctx *ctx = func_data;
-    struct phys_comp *phys = ctx->phys_base + eid;
-    struct color_comp *color = ctx->color_base + eid;
-
-    SDL_SetRenderDrawColor(ctx->aux->rend, 0xff * color->r, 0xff * color->g,
-                           0xff * color->b, 0xff);
-    SDL_RenderDrawPoint(ctx->aux->rend, phys->pos.x * win_w, phys->pos.y * win_h);
-
-}
-
-static struct system_reg render_sys = {
-    .name       = "render",
-    .comp_names = STR_ARR("phys", "color"),
-    .func       = render_tick,
-    .dep_names  = STR_ARR("phys_post_col"),
-};
 
 void create_particle(struct decs *decs, struct comp_ids *comp_ids)
 {
@@ -78,16 +49,16 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids)
     phys = decs_get_comp(decs, comp_ids->phys, eid);
     color = decs_get_comp(decs, comp_ids->color, eid);
 
-    phys->pos.x = 0.5f;
-    phys->pos.y = 0.25f;
-    phys->pos.z = 0.0f;
-    phys->vel.x = cos(eid * 0.25) * 0.2f;
-    phys->vel.y = sin(eid * 0.25) * 0.2f;
-    phys->vel.z = sin(eid * 0.25) * 0.2f;
-    phys->force.x = 0.0f;
-    phys->force.y = 0.0f;
-    phys->force.z = 0.0f;
-    phys->mass = 7.0f;
+    *phys = (struct phys_comp) {
+        .pos = (struct vec3) { 0.0f, 0.25f, 0.0f },
+        .vel = (struct vec3) {
+            cos(eid * 0.25) * 0.2f,
+            sin(eid * 0.25) * 0.2f,
+            sin(eid * 0.25) * 0.2f
+        },
+        .force = { 0.0f, 0.0f, 0.0f },
+        .mass = 7.0f
+    };
     color->r = sin(eid * 0.01) * 2;
     color->g = cos(eid * 0.03) * 2;
     color->b = eid * 0.02 * 2;
@@ -203,6 +174,7 @@ int main(void)
     struct comp_ids comp_ids;
     uint64_t render_comps;
     int runnig = 1;
+    int n_particles = 0;
     int i;
     int mx, my;
     int ret = 0;
@@ -212,22 +184,32 @@ int main(void)
         &phys_pre_col_sys,
         &phys_wall_col_sys,
         &phys_post_col_sys,
-        &render_sys,
     };
-
-    struct render_ctx_aux render_ctx_aux;
 
     SDL_Window *win;
     SDL_Renderer *rend;
     SDL_Event event;
     SDL_GLContext sdl_gl_ctx;
 
+    /* TODO Clean these up */
+
     GLuint vao_id;
-    GLuint vbo_id;
+    GLuint vertex_vbo_id;
+    GLuint particle_pos_vbo_id;
+    GLuint particle_color_vbo_id;
     GLuint vs_id;
     GLuint fs_id;
     GLuint shader_prog_id;
 
+    enum {
+        VA_IDX_VERT,
+        VA_IDX_POS,
+        VA_IDX_COLOR
+    };
+
+    GLint link_status;
+    GLint info_log_len;
+    char *info_log;
 
     SDL_Init(SDL_INIT_EVERYTHING);
 
@@ -246,9 +228,9 @@ int main(void)
     glewExperimental = GL_TRUE;
     glewInit();
 
-    render_ctx_aux.rend = rend;
-    render_ctx_aux.win = win;
-    render_sys.aux_ctx = &render_ctx_aux;
+    glDisable(GL_DEPTH_TEST); /* XXX */
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     decs_init(&decs);
     ttf_init(rend, win, NULL);
@@ -270,18 +252,47 @@ int main(void)
     glAttachShader(shader_prog_id, fs_id);
     glLinkProgram(shader_prog_id);
 
+    glGetProgramiv(shader_prog_id, GL_LINK_STATUS, &link_status);
+    glGetProgramiv(shader_prog_id, GL_INFO_LOG_LENGTH, &info_log_len);
+    if (!link_status) {
+        info_log = alloca(info_log_len + 1);
+        glGetProgramInfoLog(shader_prog_id, info_log_len, &info_log_len, info_log);
+        fprintf(stderr, "Shader linking failed:\n%s\n", info_log);
+        goto out_sdl_tear_down;
+    }
 
     glGenVertexArrays(1, &vao_id);
     glBindVertexArray(vao_id);
 
-    glGenBuffers(1, &vbo_id);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
+    glGenBuffers(1, &vertex_vbo_id);
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_vbo_id);
     glBufferData(GL_ARRAY_BUFFER, sizeof(triangle_verts), triangle_verts,
                  GL_STATIC_DRAW);
 
+    glGenBuffers(1, &particle_pos_vbo_id);
+    glBindBuffer(GL_ARRAY_BUFFER, particle_pos_vbo_id);
+
+    glGenBuffers(1, &particle_color_vbo_id);
+    glBindBuffer(GL_ARRAY_BUFFER, particle_color_vbo_id);
+
     glUseProgram(shader_prog_id);
 
-    glDisable(GL_DEPTH_TEST);
+    glEnableVertexAttribArray(VA_IDX_VERT);
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_vbo_id);
+    glVertexAttribPointer(VA_IDX_VERT, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glEnableVertexAttribArray(VA_IDX_POS);
+    glBindBuffer(GL_ARRAY_BUFFER, particle_pos_vbo_id);
+    glVertexAttribPointer(VA_IDX_POS, 3, GL_FLOAT, GL_FALSE, sizeof(struct phys_comp), 0);
+
+    glEnableVertexAttribArray(VA_IDX_COLOR);
+    glBindBuffer(GL_ARRAY_BUFFER, particle_color_vbo_id);
+    glVertexAttribPointer(VA_IDX_COLOR, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glVertexAttribDivisor(VA_IDX_VERT, 0); /* Vertices aren't instanced */
+    /* Particle positions and colors are unique to each instance */
+    glVertexAttribDivisor(VA_IDX_POS, 1);
+    glVertexAttribDivisor(VA_IDX_COLOR, 1);
 
     comp_ids.phys = decs_register_comp(&decs, "phys", sizeof(struct phys_comp));
     comp_ids.color = decs_register_comp(&decs, "color",
@@ -296,34 +307,53 @@ int main(void)
         }
     }
 
-
     while (runnig) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT)
                 runnig = 0;
         }
 
-        create_particle(&decs, &comp_ids);
+        for (i = 0; i < 10; ++i)
+            create_particle(&decs, &comp_ids);
 
-        glClearColor(0.0, 0.0, 0.5, 1.0);
+        n_particles = decs.n_entities;
+        glBindBuffer(GL_ARRAY_BUFFER, particle_pos_vbo_id);
+        glBufferData(GL_ARRAY_BUFFER, n_particles * sizeof(struct phys_comp), NULL,
+                     GL_STREAM_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, n_particles * sizeof(struct phys_comp),
+                        decs.comps[comp_ids.phys].data);
+        /* TODO Create another system for extracting the positions into a
+         * separate cpu buffer */
+        glVertexAttribPointer(VA_IDX_POS, 3, GL_FLOAT, GL_FALSE,
+                              sizeof(struct phys_comp), 0);
+
+        decs_tick(&decs);
+
+        glBindBuffer(GL_ARRAY_BUFFER, particle_color_vbo_id);
+        glBufferData(GL_ARRAY_BUFFER, n_particles * sizeof(struct vec3), NULL,
+                     GL_STREAM_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, n_particles * sizeof(struct vec3),
+                        decs.comps[comp_ids.color].data);
+        glVertexAttribPointer(VA_IDX_COLOR, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+        glEnableVertexAttribArray(VA_IDX_VERT);
+        glEnableVertexAttribArray(VA_IDX_POS);
+        glEnableVertexAttribArray(VA_IDX_COLOR);
 
-        //decs_tick(&decs);
-
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, n_particles);
         glDisableVertexAttribArray(0);
 
-        //render_system_perf_stats(&decs);
+        /* TODO Figure out how to make SDL_ttf work with opengl */
+#if 0
+        render_system_perf_stats(&decs);
+#endif
 
         SDL_GL_SwapWindow(win);
 
-        //SDL_RenderPresent(rend);
-
-        SDL_Delay(16);
+        SDL_Delay(15);
     }
 
     decs_cleanup(&decs);
