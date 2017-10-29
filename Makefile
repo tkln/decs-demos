@@ -1,5 +1,5 @@
 CFLAGS+=-std=c99 -g -I decs/
-LDFLAGS+=-lSDL2 -lSDL2_ttf -lm
+LDFLAGS+=-lSDL2 -lSDL2_ttf -lGL -lGLEW -lm
 OBJS+= phys.o ttf.o
 
 include decs/Makefile.include

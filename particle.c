@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include <SDL2/SDL.h>
+#include <GL/glew.h>
 
 #include "decs.h"
 #include "vec3.h"
@@ -130,13 +131,24 @@ int main(void)
     SDL_Window *win;
     SDL_Renderer *rend;
     SDL_Event event;
+    SDL_GLContext sdl_gl_ctx;
 
     SDL_Init(SDL_INIT_EVERYTHING);
 
     /* TODO error checks */
     win = SDL_CreateWindow("title", SDL_WINDOWPOS_UNDEFINED,
-                           SDL_WINDOWPOS_UNDEFINED, win_w, win_h, 0);
+                           SDL_WINDOWPOS_UNDEFINED, win_w, win_h,
+                           SDL_WINDOW_OPENGL);
+
     rend = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
+    sdl_gl_ctx = SDL_GL_CreateContext(win);
+    glewExperimental = GL_TRUE;
+    glewInit();
 
     render_ctx_aux.rend = rend;
     render_ctx_aux.win = win;
@@ -154,9 +166,10 @@ int main(void)
         if (ret < 0) {
             fprintf(stderr, "Error occurred while registering system \"%s\"\n",
                     systems[i]->name);
-            goto sys_reg_fail;
+            goto out_sdl_tear_down;
         }
     }
+
 
     while (runnig) {
         while (SDL_PollEvent(&event)) {
@@ -166,11 +179,13 @@ int main(void)
 
         create_particle(&decs, &comp_ids);
 
-        SDL_SetRenderDrawColor(rend, 0x0, 0x0, 0x0, 0xff);
-        SDL_RenderClear(rend);
+        glClearColor(0.0, 0.0, 0.0, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT);
 
         decs_tick(&decs);
         render_system_perf_stats(&decs);
+
+        SDL_GL_SwapWindow(win);
 
         SDL_RenderPresent(rend);
 
@@ -179,7 +194,8 @@ int main(void)
 
     decs_cleanup(&decs);
 
-sys_reg_fail:
+out_sdl_tear_down:
+    SDL_GL_DeleteContext(sdl_gl_ctx);
     SDL_DestroyWindow(win);
     SDL_Quit();
 
