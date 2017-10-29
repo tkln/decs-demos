@@ -1,6 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
 
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
@@ -33,6 +38,12 @@ struct render_ctx {
     struct render_ctx_aux *aux;
     struct phys_comp *phys_base;
     struct color_comp *color_base;
+};
+
+static const GLfloat triangle_verts[] = {
+    -0.5f, -0.5f, 0.0f,
+     0.5f, -0.5f, 0.0f,
+     0.0f,  0.5f, 0.0f,
 };
 
 int win_w = 1280, win_h = 720;
@@ -80,6 +91,84 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids)
     color->r = sin(eid * 0.01) * 2;
     color->g = cos(eid * 0.03) * 2;
     color->b = eid * 0.02 * 2;
+}
+
+static void *mmap_file(const char *path, size_t *length)
+{
+    void *p;
+    int fd;
+    int ret;
+    struct stat st;
+
+    fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        perror("open failed");
+        return NULL;
+    }
+
+    ret = fstat(fd, &st);
+    if (ret < 0) {
+        perror("stat failed");
+        goto err_close;
+        p = NULL;
+    }
+
+    if (length)
+        *length = st.st_size;
+
+    p = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+    if (!p)
+        perror("mmap failed");
+
+err_close:
+    close(fd);
+    return p;
+}
+
+static GLuint load_shader_file(const char *path, GLenum shader_type)
+{
+    char *src;
+    size_t src_len;
+    GLuint shader_id;
+    GLint compile_status;
+    GLint info_log_len;
+    char *info_log;
+
+    src = mmap_file(path, &src_len);
+    if (!src)
+        return 0;
+
+    shader_id = glCreateShader(shader_type);
+    if (!shader_id)
+        goto out_unmap;
+
+    /*
+     * XXX The length cast may cause things to overflow into the sign bit, I'll
+     * deal with it once I see a shader that long. :-)
+     */
+    glShaderSource(shader_id, 1, (const char * const *)&src, (GLint *)&src_len);
+
+    glCompileShader(shader_id);
+
+    glGetShaderiv(shader_id, GL_COMPILE_STATUS, &compile_status);
+    glGetShaderiv(shader_id, GL_INFO_LOG_LENGTH, &info_log_len);
+
+    if (!compile_status) {
+        info_log = alloca(info_log_len + 1);
+        glGetShaderInfoLog(shader_id, info_log_len, &info_log_len, info_log);
+        fprintf(stderr, "Shader compilation of \"%s\" failed:\n%s\n", path,
+                info_log);
+        shader_id = 0;
+        goto out_delete_shader;
+    }
+
+    goto out_unmap;
+
+out_delete_shader:
+    glDeleteShader(shader_id);
+out_unmap:
+    munmap(src, src_len);
+    return shader_id;
 }
 
 static void render_system_perf_stats(const struct decs *decs)
@@ -133,6 +222,13 @@ int main(void)
     SDL_Event event;
     SDL_GLContext sdl_gl_ctx;
 
+    GLuint vao_id;
+    GLuint vbo_id;
+    GLuint vs_id;
+    GLuint fs_id;
+    GLuint shader_prog_id;
+
+
     SDL_Init(SDL_INIT_EVERYTHING);
 
     /* TODO error checks */
@@ -157,6 +253,36 @@ int main(void)
     decs_init(&decs);
     ttf_init(rend, win, NULL);
 
+    vs_id = load_shader_file("./vs.glsl", GL_VERTEX_SHADER);
+    if (!vs_id) {
+        ret = EXIT_FAILURE;
+        goto out_sdl_tear_down;
+    }
+
+    fs_id = load_shader_file("./fs.glsl", GL_FRAGMENT_SHADER);
+    if (!fs_id) {
+        ret = EXIT_FAILURE;
+        goto out_sdl_tear_down;
+    }
+
+    shader_prog_id = glCreateProgram();
+    glAttachShader(shader_prog_id, vs_id);
+    glAttachShader(shader_prog_id, fs_id);
+    glLinkProgram(shader_prog_id);
+
+
+    glGenVertexArrays(1, &vao_id);
+    glBindVertexArray(vao_id);
+
+    glGenBuffers(1, &vbo_id);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(triangle_verts), triangle_verts,
+                 GL_STATIC_DRAW);
+
+    glUseProgram(shader_prog_id);
+
+    glDisable(GL_DEPTH_TEST);
+
     comp_ids.phys = decs_register_comp(&decs, "phys", sizeof(struct phys_comp));
     comp_ids.color = decs_register_comp(&decs, "color",
                                         sizeof(struct color_comp));
@@ -179,15 +305,23 @@ int main(void)
 
         create_particle(&decs, &comp_ids);
 
-        glClearColor(0.0, 0.0, 0.0, 1.0);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(0.0, 0.0, 0.5, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        decs_tick(&decs);
-        render_system_perf_stats(&decs);
+        glEnableVertexAttribArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+        //decs_tick(&decs);
+
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDisableVertexAttribArray(0);
+
+        //render_system_perf_stats(&decs);
 
         SDL_GL_SwapWindow(win);
 
-        SDL_RenderPresent(rend);
+        //SDL_RenderPresent(rend);
 
         SDL_Delay(16);
     }
