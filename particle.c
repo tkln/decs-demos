@@ -227,6 +227,8 @@ int main(void)
 
     rend = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
 
+    SDL_GL_SetSwapInterval(1);
+
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -364,8 +366,6 @@ int main(void)
 #endif
 
         SDL_GL_SwapWindow(win);
-
-        SDL_Delay(15);
     }
 
     decs_cleanup(&decs);
