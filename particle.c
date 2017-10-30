@@ -38,7 +38,8 @@ static const GLfloat triangle_verts[] = {
 
 int win_w = 1280, win_h = 720;
 
-void create_particle(struct decs *decs, struct comp_ids *comp_ids)
+void create_particle(struct decs *decs, struct comp_ids *comp_ids,
+                     struct vec3 spawn_point)
 {
     struct phys_comp *phys;
     struct color_comp *color;
@@ -58,7 +59,7 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids)
     eid += rand();
 
     *phys = (struct phys_comp) {
-        .pos = (struct vec3) { 0.0f, 0.25f, 0.0f },
+        .pos = spawn_point,
         .vel = (struct vec3) {
             cos(eid * 0.05) * 0.5f,
             sin(eid * 0.05) * 0.5f,
@@ -183,6 +184,7 @@ int main(void)
     int i;
     int mx, my;
     int ret = 0;
+    struct vec3 spawn_point = { 0.0f, 0.25f, 0.0f };
     const struct system_reg *systems[] = {
         &phys_gravity_sys,
         &phys_drag_sys,
@@ -316,10 +318,15 @@ int main(void)
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT)
                 runnig = 0;
+            else if (event.type == SDL_MOUSEBUTTONDOWN) {
+                spawn_point.x = event.button.x * 2.0f / win_h - 1.0f *
+                                (win_w / (float)win_h);
+                spawn_point.y = -event.button.y * 2.0f / win_h + 1.0f;
+            }
         }
 
         for (i = 0; i < 20; ++i)
-            create_particle(&decs, &comp_ids);
+            create_particle(&decs, &comp_ids, spawn_point);
 
         n_particles = decs.n_entities;
         glBindBuffer(GL_ARRAY_BUFFER, particle_pos_vbo_id);
