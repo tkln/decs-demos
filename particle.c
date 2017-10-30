@@ -52,16 +52,18 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids)
     *phys = (struct phys_comp) {
         .pos = (struct vec3) { 0.0f, 0.25f, 0.0f },
         .vel = (struct vec3) {
-            cos(eid * 0.25) * 0.2f,
-            sin(eid * 0.25) * 0.2f,
-            sin(eid * 0.25) * 0.2f
+            cos(eid * 0.25) * 0.5f,
+            sin(eid * 0.25) * 0.5f,
+            sin(eid * 0.25) * 0.5f
         },
         .force = { 0.0f, 0.0f, 0.0f },
         .mass = 7.0f
     };
-    color->r = sin(eid * 0.01) * 2;
-    color->g = cos(eid * 0.03) * 2;
-    color->b = eid * 0.02 * 2;
+    *color = (struct color_comp) {
+        sin(eid * 0.01) * 2,
+        cos(eid * 0.03) * 2,
+        eid * 0.02 * 2,
+    };
 }
 
 static void *mmap_file(const char *path, size_t *length)
