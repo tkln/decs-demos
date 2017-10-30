@@ -14,5 +14,5 @@ void main() {
     if (d > 0.05)
         discard;
 
-    color = vec4(particle_color, 1.0 - d * 25.0);
+    color = vec4(particle_color, pow((0.007 / d), 2) * (1.0 - d * 20.0));
 }
