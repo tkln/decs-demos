@@ -49,20 +49,23 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids)
     phys = decs_get_comp(decs, comp_ids->phys, eid);
     color = decs_get_comp(decs, comp_ids->color, eid);
 
+    *color = (struct color_comp) {
+        sin(eid * 0.001) * 1 + 1.0f,
+        cos(eid * 0.003) * 0.25 + 0.50f,
+        sin(eid * 0.002) * 0.5 + 1.5f,
+    };
+
+    eid += rand();
+
     *phys = (struct phys_comp) {
         .pos = (struct vec3) { 0.0f, 0.25f, 0.0f },
         .vel = (struct vec3) {
-            cos(eid * 0.25) * 0.5f,
-            sin(eid * 0.25) * 0.5f,
-            sin(eid * 0.25) * 0.5f
+            cos(eid * 0.05) * 0.5f,
+            sin(eid * 0.05) * 0.5f,
+            sin(eid * 0.05) * 0.5f
         },
         .force = { 0.0f, 0.0f, 0.0f },
         .mass = 7.0f
-    };
-    *color = (struct color_comp) {
-        sin(eid * 0.01) * 2,
-        cos(eid * 0.03) * 2,
-        eid * 0.02 * 2,
     };
 }
 
@@ -315,7 +318,7 @@ int main(void)
                 runnig = 0;
         }
 
-        for (i = 0; i < 10; ++i)
+        for (i = 0; i < 20; ++i)
             create_particle(&decs, &comp_ids);
 
         n_particles = decs.n_entities;

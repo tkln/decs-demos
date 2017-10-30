@@ -11,8 +11,8 @@ void main() {
 
     float d = distance(center_pos.xy, c.xy);
 
-    if (d > 0.03)
+    if (d > 0.05)
         discard;
 
-    color = vec4(particle_color, 1.0 - d * 20.0);
+    color = vec4(particle_color, 1.0 - d * 25.0);
 }
