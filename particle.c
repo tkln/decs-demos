@@ -179,12 +179,13 @@ int main(void)
     struct decs decs;
     struct comp_ids comp_ids;
     uint64_t render_comps;
-    int runnig = 1;
+    int running = 1;
     int n_particles = 0;
     int i;
     int mx, my;
     int ret = 0;
     struct vec3 spawn_point = { 0.0f, 0.25f, 0.0f };
+    int particle_rate = 20;
     const struct system_reg *systems[] = {
         &phys_gravity_sys,
         &phys_drag_sys,
@@ -316,18 +317,27 @@ int main(void)
         }
     }
 
-    while (runnig) {
+    while (running) {
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT)
-                runnig = 0;
-            else if (event.type == SDL_MOUSEBUTTONDOWN) {
+            switch (event.type) {
+            case SDL_QUIT:
+                running = 0;
+                break;
+            case SDL_MOUSEBUTTONDOWN:
                 spawn_point.x = event.button.x * 2.0f / win_h - 1.0f *
                                 (win_w / (float)win_h);
                 spawn_point.y = -event.button.y * 2.0f / win_h + 1.0f;
+                break;
+            case SDL_MOUSEWHEEL:
+                particle_rate += event.wheel.y;
+                printf("%d p/s\n", 60 * particle_rate);
+                break;
+            default:
+                break;
             }
         }
 
-        for (i = 0; i < 20; ++i)
+        for (i = 0; i < particle_rate; ++i)
             create_particle(&decs, &comp_ids, spawn_point);
 
         n_particles = decs.n_entities;
