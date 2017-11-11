@@ -259,7 +259,11 @@ int main(void)
         for (i = 0; i < particle_rate; ++i)
             create_particle(&decs, &comp_ids, spawn_point);
 
+        decs_tick(&decs);
+
         n_particles = decs.n_entities;
+
+        glBindVertexArray(vao_id);
         glBindBuffer(GL_ARRAY_BUFFER, particle_pos_vbo_id);
         glBufferData(GL_ARRAY_BUFFER, n_particles * sizeof(struct phys_comp), NULL,
                      GL_STREAM_DRAW);
@@ -269,8 +273,6 @@ int main(void)
          * separate cpu buffer */
         glVertexAttribPointer(VA_IDX_POS, 3, GL_FLOAT, GL_FALSE,
                               sizeof(struct phys_comp), 0);
-
-        decs_tick(&decs);
 
         glBindBuffer(GL_ARRAY_BUFFER, particle_color_vbo_id);
         glBufferData(GL_ARRAY_BUFFER, n_particles * sizeof(struct vec3), NULL,
@@ -286,13 +288,15 @@ int main(void)
         glEnableVertexAttribArray(VA_IDX_POS);
         glEnableVertexAttribArray(VA_IDX_COLOR);
 
-        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, n_particles);
-        glDisableVertexAttribArray(0);
+        glUseProgram(shader_prog_id);
 
-        /* TODO Figure out how to make SDL_ttf work with opengl */
-#if 0
+        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, n_particles);
+
+        glDisableVertexAttribArray(VA_IDX_VERT);
+        glDisableVertexAttribArray(VA_IDX_POS);
+        glDisableVertexAttribArray(VA_IDX_COLOR);
+
         render_system_perf_stats(&decs);
-#endif
 
         SDL_GL_SwapWindow(win);
     }
