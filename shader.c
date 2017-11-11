@@ -50,8 +50,10 @@ GLuint load_shader_file(const char *path, GLenum shader_type)
     char *info_log;
 
     src = mmap_file(path, &src_len);
-    if (!src)
+    if (!src) {
+        fprintf(stderr, "Loading shader \"%s\" failed\n", path);
         return 0;
+    }
 
     shader_id = glCreateShader(shader_type);
     if (!shader_id)
