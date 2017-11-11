@@ -101,7 +101,7 @@ GLuint link_shader_prog(GLuint shader_id_0, ...)
     glAttachShader(shader_prog_id, shader_id_0);
 
     va_start(shaders, shader_id_0);
-    while (id = va_arg(shaders, GLuint))
+    while ((id = va_arg(shaders, GLuint)))
         glAttachShader(shader_prog_id, id);
     va_end(shaders);
 
