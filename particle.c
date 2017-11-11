@@ -11,6 +11,7 @@
 #include "ttf.h"
 #include "phys.h"
 #include "shader.h"
+#include "decs/decs.h"
 
 struct color_comp {
     union {
@@ -48,9 +49,9 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
     color = decs_get_comp(decs, comp_ids->color, eid);
 
     *color = (struct color_comp) {
-        sin(eid * 0.001) * 1 + 1.0f,
-        cos(eid * 0.003) * 0.25 + 0.50f,
-        sin(eid * 0.002) * 0.5 + 1.5f,
+        sinf(eid * 0.001f) * 1 + 1.0f,
+        cosf(eid * 0.003f) * 0.25f + 0.50f,
+        sinf(eid * 0.002f) * 0.5f + 1.5f,
     };
 
     eid += rand();
@@ -58,9 +59,9 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
     *phys = (struct phys_comp) {
         .pos = spawn_point,
         .vel = (struct vec3) {
-            cos(eid * 0.05) * 0.5f,
-            sin(eid * 0.05) * 0.5f,
-            sin(eid * 0.05) * 0.5f
+            cosf(eid * 0.05f) * 0.5f,
+            sinf(eid * 0.05f) * 0.5f,
+            sinf(eid * 0.05f) * 0.5f
         },
         .force = { 0.0f, 0.0f, 0.0f },
         .mass = 7.0f
@@ -69,8 +70,8 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
 
 static void render_system_perf_stats(const struct decs *decs)
 {
-    int pt_size = 16;
-    size_t i;
+    unsigned pt_size = 16;
+    unsigned i;
     struct perf_stats *stats;
 
     ttf_printf(0, 0, "entity count: %zu", decs->n_entities);
