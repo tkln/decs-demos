@@ -23,7 +23,8 @@ struct color_comp {
 };
 
 struct comp_ids {
-    uint64_t phys;
+    uint64_t phys_pos;
+    uint64_t phys_dyn;
     uint64_t color;
 };
 
@@ -39,13 +40,17 @@ int win_w = 1280, win_h = 720;
 void create_particle(struct decs *decs, struct comp_ids *comp_ids,
                      struct vec3 spawn_point)
 {
-    struct phys_dyn_comp *phys;
+    struct phys_pos_comp *phys_pos;
+    struct phys_dyn_comp *phys_dyn;
     struct color_comp *color;
     uint64_t eid;
 
-    eid = decs_alloc_entity(decs, (1<<comp_ids->phys) | (1<<comp_ids->color));
+    eid = decs_alloc_entity(decs, (1<<comp_ids->phys_pos) |
+                                  (1<<comp_ids->phys_dyn) |
+                                  (1<<comp_ids->color));
 
-    phys = decs_get_comp(decs, comp_ids->phys, eid);
+    phys_pos = decs_get_comp(decs, comp_ids->phys_pos, eid);
+    phys_dyn = decs_get_comp(decs, comp_ids->phys_dyn, eid);
     color = decs_get_comp(decs, comp_ids->color, eid);
 
     *color = (struct color_comp) {
@@ -56,8 +61,10 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
 
     eid += rand();
 
-    *phys = (struct phys_dyn_comp) {
+    *phys_pos = (struct phys_pos_comp) {
         .pos = spawn_point,
+    };
+    *phys_dyn = (struct phys_dyn_comp) {
         .vel = (struct vec3) {
             cosf(eid * 0.05f) * 0.5f,
             sinf(eid * 0.05f) * 0.5f,
@@ -211,8 +218,10 @@ int main(void)
     glVertexAttribDivisor(VA_IDX_POS, 1);
     glVertexAttribDivisor(VA_IDX_COLOR, 1);
 
-    comp_ids.phys = decs_register_comp(&decs, "phys",
-                                       sizeof(struct phys_dyn_comp));
+    comp_ids.phys_pos = decs_register_comp(&decs, "phys_pos",
+                                           sizeof(struct phys_pos_comp));
+    comp_ids.phys_dyn = decs_register_comp(&decs, "phys_dyn",
+                                           sizeof(struct phys_dyn_comp));
     comp_ids.color = decs_register_comp(&decs, "color",
                                         sizeof(struct color_comp));
 
@@ -255,15 +264,12 @@ int main(void)
         glBindVertexArray(vao_id);
         glBindBuffer(GL_ARRAY_BUFFER, particle_pos_vbo_id);
         glBufferData(GL_ARRAY_BUFFER,
-                     n_particles * sizeof(struct phys_dyn_comp), NULL,
+                     n_particles * sizeof(struct phys_pos_comp), NULL,
                      GL_STREAM_DRAW);
         glBufferSubData(GL_ARRAY_BUFFER, 0,
-                        n_particles * sizeof(struct phys_dyn_comp),
-                        decs.comps[comp_ids.phys].data);
-        /* TODO Create another system for extracting the positions into a
-         * separate cpu buffer */
-        glVertexAttribPointer(VA_IDX_POS, 3, GL_FLOAT, GL_FALSE,
-                              sizeof(struct phys_dyn_comp), 0);
+                        n_particles * sizeof(struct phys_pos_comp),
+                        decs.comps[comp_ids.phys_pos].data);
+        glVertexAttribPointer(VA_IDX_POS, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
         glBindBuffer(GL_ARRAY_BUFFER, particle_color_vbo_id);
         glBufferData(GL_ARRAY_BUFFER, n_particles * sizeof(struct vec3), NULL,
