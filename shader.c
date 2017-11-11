@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <stdarg.h>
 #include <unistd.h>
 
 #include "shader.h"
@@ -85,4 +86,35 @@ out_unmap:
     return shader_id;
 }
 
+GLuint link_shader_prog(GLuint shader_id_0, ...)
+{
+    va_list shaders;
+    GLuint id;
+    GLuint shader_prog_id;
 
+    GLint link_status;
+    GLint info_log_len;
+    char *info_log;
+
+    shader_prog_id = glCreateProgram();
+
+    glAttachShader(shader_prog_id, shader_id_0);
+
+    va_start(shaders, shader_id_0);
+    while (id = va_arg(shaders, GLuint))
+        glAttachShader(shader_prog_id, id);
+    va_end(shaders);
+
+    glLinkProgram(shader_prog_id);
+
+    glGetProgramiv(shader_prog_id, GL_LINK_STATUS, &link_status);
+    glGetProgramiv(shader_prog_id, GL_INFO_LOG_LENGTH, &info_log_len);
+    if (!link_status) {
+        info_log = alloca(info_log_len + 1);
+        glGetProgramInfoLog(shader_prog_id, info_log_len, &info_log_len, info_log);
+        fprintf(stderr, "Shader linking failed:\n%s\n", info_log);
+        return 0;
+    }
+
+    return shader_prog_id;
+}

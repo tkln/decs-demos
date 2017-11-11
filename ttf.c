@@ -34,10 +34,6 @@ enum {
 
 int ttf_init(SDL_Renderer *renderer, SDL_Window *window, const char *font_path)
 {
-    GLint link_status;
-    GLint info_log_len;
-    char *info_log;
-
     TTF_Init();
 
     rend = renderer;
@@ -60,19 +56,9 @@ int ttf_init(SDL_Renderer *renderer, SDL_Window *window, const char *font_path)
     if (!fs_id)
         return -1;
 
-    shader_prog_id = glCreateProgram();
-    glAttachShader(shader_prog_id, vs_id);
-    glAttachShader(shader_prog_id, fs_id);
-    glLinkProgram(shader_prog_id);
-
-    glGetProgramiv(shader_prog_id, GL_LINK_STATUS, &link_status);
-    glGetProgramiv(shader_prog_id, GL_INFO_LOG_LENGTH, &info_log_len);
-    if (!link_status) {
-        info_log = alloca(info_log_len + 1);
-        glGetProgramInfoLog(shader_prog_id, info_log_len, &info_log_len, info_log);
-        fprintf(stderr, "Shader linking failed:\n%s\n", info_log);
+    shader_prog_id = link_shader_prog(vs_id, fs_id, SHADER_LAST);
+    if (!shader_prog_id)
         return -1;
-    }
 
     glGenVertexArrays(1, &tex_quad_vao_id);
     glBindVertexArray(tex_quad_vao_id);

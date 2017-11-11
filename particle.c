@@ -135,10 +135,6 @@ int main(void)
         VA_IDX_COLOR
     };
 
-    GLint link_status;
-    GLint info_log_len;
-    char *info_log;
-
     SDL_Init(SDL_INIT_EVERYTHING);
 
     /* TODO error checks */
@@ -177,17 +173,9 @@ int main(void)
         goto out_sdl_tear_down;
     }
 
-    shader_prog_id = glCreateProgram();
-    glAttachShader(shader_prog_id, vs_id);
-    glAttachShader(shader_prog_id, fs_id);
-    glLinkProgram(shader_prog_id);
-
-    glGetProgramiv(shader_prog_id, GL_LINK_STATUS, &link_status);
-    glGetProgramiv(shader_prog_id, GL_INFO_LOG_LENGTH, &info_log_len);
-    if (!link_status) {
-        info_log = alloca(info_log_len + 1);
-        glGetProgramInfoLog(shader_prog_id, info_log_len, &info_log_len, info_log);
-        fprintf(stderr, "Shader linking failed:\n%s\n", info_log);
+    shader_prog_id = link_shader_prog(fs_id, vs_id, SHADER_LAST);
+    if (!shader_prog_id) {
+        ret = EXIT_FAILURE;
         goto out_sdl_tear_down;
     }
 
