@@ -159,13 +159,13 @@ int main(void)
     decs_init(&decs);
     ttf_init(rend, win, NULL);
 
-    vs_id = load_shader_file("./vs.glsl", GL_VERTEX_SHADER);
+    vs_id = load_shader_file("./particle_vs.glsl", GL_VERTEX_SHADER);
     if (!vs_id) {
         ret = EXIT_FAILURE;
         goto out_sdl_tear_down;
     }
 
-    fs_id = load_shader_file("./fs.glsl", GL_FRAGMENT_SHADER);
+    fs_id = load_shader_file("./particle_fs.glsl", GL_FRAGMENT_SHADER);
     if (!fs_id) {
         ret = EXIT_FAILURE;
         goto out_sdl_tear_down;
