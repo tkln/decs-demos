@@ -4,7 +4,8 @@
 #include "vec3.h"
 #include "decs.h"
 
-struct phys_comp  {
+
+struct phys_dyn_comp  {
     struct vec3 pos;
     struct vec3 d_pos;
     struct vec3 vel;
