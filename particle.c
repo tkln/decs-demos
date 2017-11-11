@@ -98,11 +98,9 @@ int main(void)
 {
     struct decs decs;
     struct comp_ids comp_ids;
-    uint64_t render_comps;
     int running = 1;
     int n_particles = 0;
     int i;
-    int mx, my;
     int ret = 0;
     struct vec3 spawn_point = { 0.0f, 0.25f, 0.0f };
     int particle_rate = 20;
