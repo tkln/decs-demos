@@ -87,16 +87,10 @@ int ttf_init(SDL_Renderer *renderer, SDL_Window *window, const char *font_path)
 
 void ttf_render(unsigned x, unsigned y, const char *str)
 {
-    SDL_Rect rect;
     SDL_Surface *surf;
     SDL_Color color = {255, 255, 255, 0};
-    SDL_Color bg_color = {0, 0, 0, 0};
 
     surf = TTF_RenderText_Blended(font, str, color);
-    rect.x = x;
-    rect.y = y;
-    rect.w = surf->w;
-    rect.h = surf->h;
 
     glBindTexture(GL_TEXTURE_2D, tex_id);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surf->w, surf->h, 0, GL_RGBA,
