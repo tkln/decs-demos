@@ -10,7 +10,7 @@
 
 void *mmap_file(const char *path, size_t *length)
 {
-    void *p;
+    void *p = NULL;
     int fd;
     int ret;
     struct stat st;
@@ -25,7 +25,6 @@ void *mmap_file(const char *path, size_t *length)
     if (ret < 0) {
         perror("stat failed");
         goto err_close;
-        p = NULL;
     }
 
     if (length)
