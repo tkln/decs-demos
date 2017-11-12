@@ -1,8 +1,55 @@
 #include "phys.h"
 
+void phys_drag_tick(struct decs *, uint64_t, void *);
+void phys_gravity_tick(struct decs *, uint64_t, void *);
+void phys_pre_col_tick(struct decs *, uint64_t, void *);
+void phys_wall_col_tick(struct decs *, uint64_t, void *);
+void phys_post_col_tick(struct decs *, uint64_t, void *);
 
 struct phys_drag_ctx {
     struct phys_dyn_comp *phys_base;
+};
+
+struct phys_gravity_ctx {
+    struct phys_dyn_comp *phys_base;
+};
+
+struct phys_ctx {
+    struct phys_pos_comp *phys_pos_base;
+    struct phys_dyn_comp *phys_dyn_base;
+};
+
+const struct system_reg phys_drag_sys = {
+    .name       = "phys_drag",
+    .comp_names = STR_ARR("phys_dyn"),
+    .func       = phys_drag_tick,
+};
+
+const struct system_reg phys_gravity_sys = {
+    .name       = "phys_gravity",
+    .comp_names = STR_ARR("phys_dyn"),
+    .func       = phys_gravity_tick,
+};
+
+const struct system_reg phys_pre_col_sys = {
+    .name       = "phys_pre_col",
+    .comp_names = STR_ARR("phys_pos", "phys_dyn"),
+    .func       = phys_pre_col_tick,
+    .dep_names  = STR_ARR("phys_drag", "phys_gravity"),
+};
+
+const struct system_reg phys_wall_col_sys = {
+    .name       = "phys_wall_col",
+    .comp_names = STR_ARR("phys_pos", "phys_dyn"),
+    .func       = phys_wall_col_tick,
+    .dep_names  = STR_ARR("phys_pre_col"),
+};
+
+const struct system_reg phys_post_col_sys = {
+    .name       = "phys_post_col",
+    .comp_names = STR_ARR("phys_pos", "phys_dyn"),
+    .func       = phys_post_col_tick,
+    .dep_names  = STR_ARR("phys_wall_col"),
 };
 
 void phys_drag_tick(struct decs *decs, uint64_t eid, void *func_data)
@@ -25,16 +72,6 @@ void phys_drag_tick(struct decs *decs, uint64_t eid, void *func_data)
     phys->force = vec3_add(phys->force, drag_force);
 }
 
-const struct system_reg phys_drag_sys = {
-    .name       = "phys_drag",
-    .comp_names = STR_ARR("phys_dyn"),
-    .func       = phys_drag_tick,
-};
-
-struct phys_gravity_ctx {
-    struct phys_dyn_comp *phys_base;
-};
-
 void phys_gravity_tick(struct decs *decs, uint64_t eid, void *func_data)
 {
     struct phys_gravity_ctx *ctx = func_data;
@@ -42,12 +79,6 @@ void phys_gravity_tick(struct decs *decs, uint64_t eid, void *func_data)
 
     phys->force.y -= 9.81f;
 }
-
-const struct system_reg phys_gravity_sys = {
-    .name       = "phys_gravity",
-    .comp_names = STR_ARR("phys_dyn"),
-    .func       = phys_gravity_tick,
-};
 
 static void phys_euler_tick(struct phys_dyn_comp *phys, struct vec3 force,
                             float dt)
@@ -60,11 +91,6 @@ static void phys_euler_tick(struct phys_dyn_comp *phys, struct vec3 force,
     phys->d_pos = vec3_muls(phys->vel, dt);
 }
 
-struct phys_ctx {
-    struct phys_pos_comp *phys_pos_base;
-    struct phys_dyn_comp *phys_dyn_base;
-};
-
 void phys_pre_col_tick(struct decs *decs, uint64_t eid, void *func_data)
 {
     struct phys_ctx *phys_ctx = func_data;
@@ -76,13 +102,6 @@ void phys_pre_col_tick(struct decs *decs, uint64_t eid, void *func_data)
 
     phys_dyn->force = (struct vec3){ 0.0f, 0.0f, 0.0f };
 }
-
-const struct system_reg phys_pre_col_sys = {
-    .name       = "phys_pre_col",
-    .comp_names = STR_ARR("phys_pos", "phys_dyn"),
-    .func       = phys_pre_col_tick,
-    .dep_names  = STR_ARR("phys_drag", "phys_gravity"),
-};
 
 void phys_wall_col_tick(struct decs *decs, uint64_t eid, void *func_data)
 {
@@ -101,13 +120,6 @@ void phys_wall_col_tick(struct decs *decs, uint64_t eid, void *func_data)
 #endif
 }
 
-const struct system_reg phys_wall_col_sys = {
-    .name       = "phys_wall_col",
-    .comp_names = STR_ARR("phys_pos", "phys_dyn"),
-    .func       = phys_wall_col_tick,
-    .dep_names  = STR_ARR("phys_pre_col"),
-};
-
 void phys_post_col_tick(struct decs *decs, uint64_t eid, void *func_data)
 {
     struct phys_ctx *phys_ctx = func_data;
@@ -117,9 +129,3 @@ void phys_post_col_tick(struct decs *decs, uint64_t eid, void *func_data)
     phys_pos->pos = vec3_add(phys_pos->pos, phys_dyn->d_pos);
 }
 
-const struct system_reg phys_post_col_sys = {
-    .name       = "phys_post_col",
-    .comp_names = STR_ARR("phys_pos", "phys_dyn"),
-    .func       = phys_post_col_tick,
-    .dep_names  = STR_ARR("phys_wall_col"),
-};
