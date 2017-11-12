@@ -56,7 +56,7 @@ GLuint load_shader_file(const char *path, GLenum shader_type)
 
     shader_id = glCreateShader(shader_type);
     if (!shader_id)
-        goto out_unmap;
+        goto err_unmap;
 
     /*
      * XXX The length cast may cause things to overflow into the sign bit, I'll
@@ -74,15 +74,11 @@ GLuint load_shader_file(const char *path, GLenum shader_type)
         glGetShaderInfoLog(shader_id, info_log_len, &info_log_len, info_log);
         fprintf(stderr, "Shader compilation of \"%s\" failed:\n%s\n", path,
                 info_log);
+        glDeleteShader(shader_id);
         shader_id = 0;
-        goto out_delete_shader;
     }
 
-    goto out_unmap;
-
-out_delete_shader:
-    glDeleteShader(shader_id);
-out_unmap:
+err_unmap:
     munmap(src, src_len);
     return shader_id;
 }
