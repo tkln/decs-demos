@@ -68,7 +68,7 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
         .vel = (struct vec3) {
             cosf(eid * 0.05f) * 0.5f,
             sinf(eid * 0.05f) * 0.5f,
-            sinf(eid * 0.05f) * 0.5f
+            0.0f,
         },
         .force = { 0.0f, 0.0f, 0.0f },
         .mass = 7.0f
