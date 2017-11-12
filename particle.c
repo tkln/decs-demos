@@ -132,7 +132,7 @@ int main(void)
     const struct system_reg *systems[] = {
         &phys_gravity_sys,
         &phys_drag_sys,
-        &phys_pre_col_sys,
+        &phys_integrate_sys,
         &phys_wall_col_sys,
         &phys_post_col_sys,
     };

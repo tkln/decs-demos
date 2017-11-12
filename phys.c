@@ -2,7 +2,7 @@
 
 void phys_drag_tick(struct decs *, uint64_t, void *);
 void phys_gravity_tick(struct decs *, uint64_t, void *);
-void phys_pre_col_tick(struct decs *, uint64_t, void *);
+void phys_integrater_tick(struct decs *, uint64_t, void *);
 void phys_wall_col_tick(struct decs *, uint64_t, void *);
 void phys_post_col_tick(struct decs *, uint64_t, void *);
 
@@ -31,10 +31,10 @@ const struct system_reg phys_gravity_sys = {
     .func       = phys_gravity_tick,
 };
 
-const struct system_reg phys_pre_col_sys = {
-    .name       = "phys_pre_col",
+const struct system_reg phys_integrate_sys = {
+    .name       = "phys_integrate",
     .comp_names = STR_ARR("phys_pos", "phys_dyn"),
-    .func       = phys_pre_col_tick,
+    .func       = phys_integrater_tick,
     .dep_names  = STR_ARR("phys_drag", "phys_gravity"),
 };
 
@@ -42,7 +42,7 @@ const struct system_reg phys_wall_col_sys = {
     .name       = "phys_wall_col",
     .comp_names = STR_ARR("phys_pos", "phys_dyn"),
     .func       = phys_wall_col_tick,
-    .dep_names  = STR_ARR("phys_pre_col"),
+    .dep_names  = STR_ARR("phys_integrate"),
 };
 
 const struct system_reg phys_post_col_sys = {
@@ -91,7 +91,7 @@ static void phys_euler_tick(struct phys_dyn_comp *phys, struct vec3 force,
     phys->d_pos = vec3_muls(phys->vel, dt);
 }
 
-void phys_pre_col_tick(struct decs *decs, uint64_t eid, void *func_data)
+void phys_integrater_tick(struct decs *decs, uint64_t eid, void *func_data)
 {
     struct phys_ctx *phys_ctx = func_data;
     struct phys_dyn_comp *phys_dyn = phys_ctx->phys_dyn_base + eid;
