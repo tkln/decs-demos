@@ -109,9 +109,12 @@ void phys_wall_col_tick(struct decs *decs, uint64_t eid, void *func_data)
     struct phys_pos_comp *phys = phys_ctx->phys_pos_base + eid;
     struct phys_dyn_comp *phys_dyn = phys_ctx->phys_dyn_base + eid;
     struct vec3 pos = vec3_add(phys->pos, phys_dyn->d_pos);
+    const float epsilon = 0.005f;
 
-    if (pos.y > 1.0f || pos.y < -1.0f)
+    if (pos.y > 1.0f || pos.y < -1.0f) {
         phys_dyn->vel.y *= -0.9f;
+        phys->pos.y *= 1.0f - epsilon;
+    }
 #if 0
     if (pos.x > 1.0f)
         phys->pos.x -= 1.0f;
