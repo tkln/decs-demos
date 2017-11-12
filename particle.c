@@ -13,6 +13,8 @@
 #include "shader.h"
 #include "decs/decs.h"
 
+#define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
+
 struct color_comp {
     union {
         struct vec3 color;
@@ -78,26 +80,42 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
 static void render_system_perf_stats(const struct decs *decs)
 {
     unsigned pt_size = 16;
-    unsigned i;
+    unsigned i, j;
     struct perf_stats *stats;
+
+    struct {
+        const char *name;
+        const size_t offset;
+    } prints[] = {
+        {
+            .name = "cpu cycles:     ",
+            .offset = offsetof(struct perf_stats, cpu_cycles),
+        }, {
+            .name = "l3 cache refs:  ",
+            .offset = offsetof(struct perf_stats, cache_refs),
+        }, {
+            .name = "l3 cache misses:",
+            .offset = offsetof(struct perf_stats, cpu_cycles),
+        }, {
+            .name = "branch instrs:  ",
+            .offset = offsetof(struct perf_stats, cache_refs),
+        }, {
+            .name = "branchs misses: ",
+            .offset = offsetof(struct perf_stats, cpu_cycles),
+        }
+    };
+
+    const unsigned n_prints = ARRAY_SIZE(prints) + 1;
 
     ttf_printf(0, 0, "entity count: %zu", decs->n_entities);
     for (i = 0; i < decs->n_systems; ++i) {
         stats = &decs->systems[i].perf_stats;
-        ttf_printf(0, pt_size * (1 + i * 6), "%s:", decs->systems[i].name);
-        ttf_printf(64, pt_size * (2 + i * 6), "cpu cycles: %lld, (%lld)",
-                 stats->cpu_cycles, stats->cpu_cycles / decs->n_entities);
-        ttf_printf(64, pt_size * (3 + i * 6), "l3 cache refs: %lld, (%lld)",
-                 stats->cache_refs, stats->cache_refs / decs->n_entities);
-        ttf_printf(64, pt_size * (4 + i * 6), "l3 cache misses: %lld, (%lld)",
-                   stats->cache_misses,
-                   stats->cache_misses / decs->n_entities);
-        ttf_printf(64, pt_size * (5 + i * 6),
-                   "branch instructions: %lld, (%lld)", stats->branch_instrs,
-                   stats->branch_instrs / decs->n_entities);
-        ttf_printf(64, pt_size * (6 + i * 6), "branch misses: %lld, (%lld)",
-                   stats->branch_misses,
-                   stats->branch_misses / decs->n_entities);
+        ttf_printf(0, pt_size * (1 + i * n_prints), "%s:", decs->systems[i].name);
+        for (j = 0; j < ARRAY_SIZE(prints); ++j) {
+            long long val = ((long long *)stats)[j];
+            ttf_printf(64, pt_size * (2 + j + i * n_prints), "%s %lld, (%.2f)",
+                       prints[j].name, val, (double)val / decs->n_entities);
+        }
     }
 }
 
