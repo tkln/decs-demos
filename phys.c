@@ -20,36 +20,36 @@ struct phys_ctx {
 };
 
 const struct system_reg phys_drag_sys = {
-    .name       = "phys_drag",
-    .comp_names = STR_ARR("phys_dyn"),
-    .func       = phys_drag_tick,
+    .name   = "phys_drag",
+    .comps  = STR_ARR("phys_dyn"),
+    .func   = phys_drag_tick,
 };
 
 const struct system_reg phys_gravity_sys = {
-    .name       = "phys_gravity",
-    .comp_names = STR_ARR("phys_dyn"),
-    .func       = phys_gravity_tick,
+    .name   = "phys_gravity",
+    .comps  = STR_ARR("phys_dyn"),
+    .func   = phys_gravity_tick,
 };
 
 const struct system_reg phys_integrate_sys = {
-    .name       = "phys_integrate",
-    .comp_names = STR_ARR("phys_pos", "phys_dyn"),
-    .func       = phys_integrater_tick,
-    .dep_names  = STR_ARR("phys_drag", "phys_gravity"),
+    .name   = "phys_integrate",
+    .comps  = STR_ARR("phys_pos", "phys_dyn"),
+    .func   = phys_integrater_tick,
+    .deps   = STR_ARR("phys_drag", "phys_gravity"),
 };
 
 const struct system_reg phys_wall_col_sys = {
-    .name       = "phys_wall_col",
-    .comp_names = STR_ARR("phys_pos", "phys_dyn"),
-    .func       = phys_wall_col_tick,
-    .dep_names  = STR_ARR("phys_integrate"),
+    .name   = "phys_wall_col",
+    .comps  = STR_ARR("phys_pos", "phys_dyn"),
+    .func   = phys_wall_col_tick,
+    .deps   = STR_ARR("phys_integrate"),
 };
 
 const struct system_reg phys_post_col_sys = {
-    .name       = "phys_post_col",
-    .comp_names = STR_ARR("phys_pos", "phys_dyn"),
-    .func       = phys_post_col_tick,
-    .dep_names  = STR_ARR("phys_wall_col"),
+    .name   = "phys_post_col",
+    .comps  = STR_ARR("phys_pos", "phys_dyn"),
+    .func   = phys_post_col_tick,
+    .deps   = STR_ARR("phys_wall_col"),
 };
 
 void phys_drag_tick(struct decs *decs, uint64_t eid, void *func_data)
