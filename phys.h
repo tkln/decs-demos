@@ -17,6 +17,7 @@ struct phys_dyn_comp  {
 
 const struct system_reg phys_drag_sys;
 const struct system_reg phys_gravity_sys;
+const struct system_reg phys_gravity_batch_sys;
 const struct system_reg phys_integrate_sys;
 const struct system_reg phys_wall_col_sys;
 const struct system_reg phys_post_col_sys;

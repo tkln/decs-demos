@@ -130,7 +130,11 @@ int main(void)
     struct vec3 spawn_point = { 0.0f, 0.25f, 0.0f };
     int particle_rate = 20;
     const struct system_reg *systems[] = {
+#if 0
         &phys_gravity_sys,
+#else
+        &phys_gravity_batch_sys,
+#endif
         &phys_drag_sys,
         &phys_integrate_sys,
         &phys_wall_col_sys,
