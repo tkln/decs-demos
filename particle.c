@@ -280,9 +280,11 @@ int main(void)
                 running = 0;
                 break;
             case SDL_MOUSEBUTTONDOWN:
-                spawn_point.x = event.button.x * 2.0f / win_h - 1.0f *
-                                (win_w / (float)win_h);
-                spawn_point.y = -event.button.y * 2.0f / win_h + 1.0f;
+                if (event.button.button == SDL_BUTTON_LEFT) {
+                    spawn_point.x = event.button.x * 2.0f / win_h - 1.0f *
+                                    (win_w / (float)win_h);
+                    spawn_point.y = -event.button.y * 2.0f / win_h + 1.0f;
+                }
                 break;
             case SDL_MOUSEWHEEL:
                 particle_rate += event.wheel.y;
