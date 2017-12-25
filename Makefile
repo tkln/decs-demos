@@ -1,4 +1,4 @@
-CFLAGS+=-std=c99 -Wall -Wno-missing-braces -g -I decs/
+CFLAGS+=-O2 -std=c99 -Wall -Wno-missing-braces -g -I decs/
 LDFLAGS+=-lSDL2 -lSDL2_ttf -lGL -lGLEW -lm
 OBJS+= phys.o ttf.o shader.o
 
