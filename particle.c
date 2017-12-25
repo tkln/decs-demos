@@ -80,7 +80,7 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
         .mass = 7.0f
     };
 
-    *scale = 0.04f;
+    *scale = 0.02f + (sinf(eid * 0.007f) + 1.0f) * 0.04f;
 }
 
 static void render_system_perf_stats(const struct decs *decs)
@@ -158,6 +158,7 @@ int main(void)
     GLuint vertex_vbo_id;
     GLuint particle_pos_vbo_id;
     GLuint particle_color_vbo_id;
+    GLuint particle_scale_vbo_id;
     GLuint vs_id;
     GLuint fs_id;
     GLuint shader_prog_id;
@@ -165,7 +166,8 @@ int main(void)
     enum {
         VA_IDX_VERT,
         VA_IDX_POS,
-        VA_IDX_COLOR
+        VA_IDX_COLOR,
+        VA_IDX_SCALE,
     };
 
     SDL_Init(SDL_INIT_EVERYTHING);
@@ -226,6 +228,9 @@ int main(void)
     glGenBuffers(1, &particle_color_vbo_id);
     glBindBuffer(GL_ARRAY_BUFFER, particle_color_vbo_id);
 
+    glGenBuffers(1, &particle_scale_vbo_id);
+    glBindBuffer(GL_ARRAY_BUFFER, particle_scale_vbo_id);
+
     glUseProgram(shader_prog_id);
 
     glEnableVertexAttribArray(VA_IDX_VERT);
@@ -241,10 +246,15 @@ int main(void)
     glBindBuffer(GL_ARRAY_BUFFER, particle_color_vbo_id);
     glVertexAttribPointer(VA_IDX_COLOR, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
+    glEnableVertexAttribArray(VA_IDX_SCALE);
+    glBindBuffer(GL_ARRAY_BUFFER, particle_scale_vbo_id);
+    glVertexAttribPointer(VA_IDX_COLOR, 1, GL_FLOAT, GL_FALSE, 0, 0);
+
     glVertexAttribDivisor(VA_IDX_VERT, 0); /* Vertices aren't instanced */
     /* Particle positions and colors are unique to each instance */
     glVertexAttribDivisor(VA_IDX_POS, 1);
     glVertexAttribDivisor(VA_IDX_COLOR, 1);
+    glVertexAttribDivisor(VA_IDX_SCALE, 1);
 
     comp_ids.phys_pos = decs_register_comp(&decs, "phys_pos",
                                            sizeof(struct phys_pos_comp));
@@ -307,12 +317,20 @@ int main(void)
                         decs.comps[comp_ids.color].data);
         glVertexAttribPointer(VA_IDX_COLOR, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
+        glBindBuffer(GL_ARRAY_BUFFER, particle_scale_vbo_id);
+        glBufferData(GL_ARRAY_BUFFER, n_particles * sizeof(float), NULL,
+                     GL_STREAM_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, n_particles * sizeof(float),
+                        decs.comps[comp_ids.scale].data);
+        glVertexAttribPointer(VA_IDX_SCALE, 1, GL_FLOAT, GL_FALSE, 0, 0);
+
         glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glEnableVertexAttribArray(VA_IDX_VERT);
         glEnableVertexAttribArray(VA_IDX_POS);
         glEnableVertexAttribArray(VA_IDX_COLOR);
+        glEnableVertexAttribArray(VA_IDX_SCALE);
 
         glUseProgram(shader_prog_id);
 
@@ -320,7 +338,7 @@ int main(void)
 
         glDisableVertexAttribArray(VA_IDX_VERT);
         glDisableVertexAttribArray(VA_IDX_POS);
-        glDisableVertexAttribArray(VA_IDX_COLOR);
+        glDisableVertexAttribArray(VA_IDX_SCALE);
 
         render_system_perf_stats(&decs);
 
