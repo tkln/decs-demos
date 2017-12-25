@@ -28,6 +28,7 @@ struct comp_ids {
     uint64_t phys_pos;
     uint64_t phys_dyn;
     uint64_t color;
+    uint64_t scale;
 };
 
 static const GLfloat triangle_verts[] = {
@@ -45,15 +46,18 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
     struct phys_pos_comp *phys_pos;
     struct phys_dyn_comp *phys_dyn;
     struct color_comp *color;
+    float *scale;
     uint64_t eid;
 
     eid = decs_alloc_entity(decs, (1<<comp_ids->phys_pos) |
                                   (1<<comp_ids->phys_dyn) |
-                                  (1<<comp_ids->color));
+                                  (1<<comp_ids->color) |
+                                  (1<<comp_ids->scale));
 
     phys_pos = decs_get_comp(decs, comp_ids->phys_pos, eid);
     phys_dyn = decs_get_comp(decs, comp_ids->phys_dyn, eid);
     color = decs_get_comp(decs, comp_ids->color, eid);
+    scale = decs_get_comp(decs, comp_ids->scale, eid);
 
     *color = (struct color_comp) {
         sinf(eid * 0.001f) * 1 + 1.0f,
@@ -75,6 +79,8 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
         .force = { 0.0f, 0.0f, 0.0f },
         .mass = 7.0f
     };
+
+    *scale = 0.04f;
 }
 
 static void render_system_perf_stats(const struct decs *decs)
@@ -246,6 +252,7 @@ int main(void)
                                            sizeof(struct phys_dyn_comp));
     comp_ids.color = decs_register_comp(&decs, "color",
                                         sizeof(struct color_comp));
+    comp_ids.scale = decs_register_comp(&decs, "scale", sizeof(float));
 
     for (i = 0; i < sizeof(systems) / sizeof(systems[0]); ++i) {
         ret = decs_register_system(&decs, systems[i], NULL);
