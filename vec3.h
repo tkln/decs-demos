@@ -1,6 +1,8 @@
 #ifndef VEC3_H
 #define VEC3_H
 
+#include <math.h>
+
 struct vec3 {
     union {
         float e[3];
@@ -37,9 +39,7 @@ static inline struct vec3 vec3_muls(const struct vec3 a, const float b)
 
 static inline struct vec3 vec3_spow2(const struct vec3 a)
 {
-    return (struct vec3) { a.x * a.x * (a.x < 0.0f ? -1.0f : 1.0f),
-                           a.y * a.y * (a.y < 0.0f ? -1.0f : 1.0f),
-                           a.z * a.z * (a.z < 0.0f ? -1.0f : 1.0f) };
+    return (struct vec3) { a.x * fabs(a.x), a.y * fabs(a.y), a.z * fabs(a.z) };
 }
 
 static inline struct vec3 vec3_pow2(const struct vec3 a)
