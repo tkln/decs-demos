@@ -9,9 +9,11 @@ flat out vec3 particle_color;
 
 void main()
 {
+    const float scale = 0.04;
     center_pos = pos_offset;
     particle_color = color;
-    gl_Position.xyz = (vert_pos + pos_offset);
+
+    gl_Position.xyz = (vert_pos * scale + pos_offset);
     gl_Position.x *= (720.0 / 1280.0);
     gl_Position.w = 1.0;
 }

@@ -31,10 +31,10 @@ struct comp_ids {
 };
 
 static const GLfloat triangle_verts[] = {
-    -0.04f, -0.04f, 0.0f,
-     0.04f, -0.04f, 0.0f,
-    -0.04f,  0.04f, 0.0f,
-     0.04f,  0.04f, 0.0f,
+    -1.0f, -1.0f, 0.0f,
+     1.0f, -1.0f, 0.0f,
+    -1.0f,  1.0f, 0.0f,
+     1.0f,  1.0f, 0.0f,
 };
 
 int win_w = 1280, win_h = 720;
