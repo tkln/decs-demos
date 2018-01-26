@@ -83,6 +83,39 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
     *scale = 0.02f + (sinf(eid * 0.007f) + 1.0f) * 0.04f;
 }
 
+static void create_pin(struct decs *decs, const struct comp_ids *comp_ids,
+                       const struct vec3 pos)
+{
+    struct phys_pos_comp *phys_pos;
+    struct color_comp *color;
+    float *scale;
+    uint64_t eid;
+
+    eid = decs_alloc_entity(decs, (1<<comp_ids->phys_pos) |
+                                  (1<<comp_ids->color) |
+                                  (1<<comp_ids->scale));
+
+    phys_pos = decs_get_comp(decs, comp_ids->phys_pos, eid);
+    color = decs_get_comp(decs, comp_ids->color, eid);
+    scale = decs_get_comp(decs, comp_ids->scale, eid);
+
+    *color = (struct color_comp) { 0.5f, 0.5f, 0.5f };
+    *phys_pos = (struct phys_pos_comp) { .pos = pos };
+
+    *scale = 0.55f;
+}
+
+static struct vec3 normalize_screen_coords(int x, int y)
+{
+    struct vec3 p = {
+        .x = x * 2.0f / win_h - 1.0f * (win_w / (float)win_h),
+        .y = -y * 2.0f / win_h + 1.0f,
+        .z = 0.0f,
+    };
+
+    return p;
+}
+
 static void render_system_perf_stats(const struct decs *decs)
 {
     unsigned pt_size = 16;
@@ -281,9 +314,12 @@ int main(void)
                 break;
             case SDL_MOUSEBUTTONDOWN:
                 if (event.button.button == SDL_BUTTON_LEFT) {
-                    spawn_point.x = event.button.x * 2.0f / win_h - 1.0f *
-                                    (win_w / (float)win_h);
-                    spawn_point.y = -event.button.y * 2.0f / win_h + 1.0f;
+                    spawn_point = normalize_screen_coords(event.button.x,
+                                                          event.button.y);
+                } else if (event.button.button == SDL_BUTTON_RIGHT) {
+                    create_pin(&decs, &comp_ids,
+                               normalize_screen_coords(event.button.x,
+                                                       event.button.y));
                 }
                 break;
             case SDL_MOUSEWHEEL:
