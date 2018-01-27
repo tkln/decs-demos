@@ -112,7 +112,7 @@ static void create_pin(struct decs *decs, const struct comp_ids *comp_ids,
     *phys_pos = (struct phys_pos_comp) { .pos = pos };
 
     *scale = 0.25f;
-    sph->r = *scale * 0.5f;
+    sph->r = *scale * 1.0f;
 }
 
 static struct vec3 normalize_screen_coords(int x, int y)

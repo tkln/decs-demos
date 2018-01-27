@@ -10,7 +10,7 @@ void main() {
     vec2 c = vec2((2.0 / 720.0) * gl_FragCoord.x - (1280.0 / 720.0),
                   (2.0 / 720.0) * gl_FragCoord.y - 1.0);
 
-    const float falloff = 0.05;
+    const float falloff = 0.025;
     const float hardness = 5.5;
     float d = distance(center_pos.xy, c.xy);
     float a = 1.0f;
