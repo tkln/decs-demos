@@ -47,4 +47,9 @@ static inline struct vec3 vec3_pow2(const struct vec3 a)
     return (struct vec3) { a.x * a.x, a.y * a.y, a.z * a.z };
 }
 
+static inline float vec3_norm2(const struct vec3 a)
+{
+    return a.x * a.x + a.y * a.y + a.z * a.z;
+}
+
 #endif
