@@ -2,6 +2,7 @@
 #define VEC3_H
 
 #include <math.h>
+#include <stdio.h>
 
 struct vec3 {
     union {
@@ -11,6 +12,13 @@ struct vec3 {
         };
     };
 };
+
+static int vec3_print_decimals = 3;
+static inline void vec3_print(const char *str, const struct vec3 v)
+{
+    const int d = vec3_print_decimals;
+    printf("%s: { x = %.*f, y = %.*f, z = %.*f }\n", str, d, v.x, d, v.y, d, v.z);
+}
 
 static inline struct vec3 vec3_add(const struct vec3 a, const struct vec3 b)
 {
