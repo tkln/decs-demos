@@ -12,6 +12,7 @@
 #include "phys.h"
 #include "shader.h"
 #include "decs/decs.h"
+#include "phys_sphere_col.h"
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
 
@@ -29,6 +30,7 @@ struct comp_ids {
     uint64_t phys_dyn;
     uint64_t color;
     uint64_t scale;
+    uint64_t phys_sphere_col;
 };
 
 static const GLfloat triangle_verts[] = {
@@ -45,6 +47,7 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
 {
     struct phys_pos_comp *phys_pos;
     struct phys_dyn_comp *phys_dyn;
+    struct phys_sphere_comp *sph;
     struct color_comp *color;
     float *scale;
     uint64_t eid;
@@ -52,12 +55,14 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
     eid = decs_alloc_entity(decs, (1<<comp_ids->phys_pos) |
                                   (1<<comp_ids->phys_dyn) |
                                   (1<<comp_ids->color) |
-                                  (1<<comp_ids->scale));
+                                  (1<<comp_ids->scale) |
+                                  (1<<comp_ids->phys_sphere_col));
 
     phys_pos = decs_get_comp(decs, comp_ids->phys_pos, eid);
     phys_dyn = decs_get_comp(decs, comp_ids->phys_dyn, eid);
     color = decs_get_comp(decs, comp_ids->color, eid);
     scale = decs_get_comp(decs, comp_ids->scale, eid);
+    sph = decs_get_comp(decs, comp_ids->phys_sphere_col, eid);
 
     *color = (struct color_comp) {
         sinf(eid * 0.001f) * 1 + 1.0f,
@@ -81,6 +86,7 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
     };
 
     *scale = 0.02f + (sinf(eid * 0.007f) + 1.0f) * 0.04f;
+    sph->r = *scale;
 }
 
 static void create_pin(struct decs *decs, const struct comp_ids *comp_ids,
@@ -88,21 +94,25 @@ static void create_pin(struct decs *decs, const struct comp_ids *comp_ids,
 {
     struct phys_pos_comp *phys_pos;
     struct color_comp *color;
+    struct phys_sphere_comp *sph;
     float *scale;
     uint64_t eid;
 
     eid = decs_alloc_entity(decs, (1<<comp_ids->phys_pos) |
                                   (1<<comp_ids->color) |
-                                  (1<<comp_ids->scale));
+                                  (1<<comp_ids->scale) |
+                                  (1<<comp_ids->phys_sphere_col));
 
     phys_pos = decs_get_comp(decs, comp_ids->phys_pos, eid);
     color = decs_get_comp(decs, comp_ids->color, eid);
     scale = decs_get_comp(decs, comp_ids->scale, eid);
+    sph = decs_get_comp(decs, comp_ids->phys_sphere_col, eid);
 
-    *color = (struct color_comp) { 0.5f, 0.5f, 0.5f };
+    *color = (struct color_comp) { 0.8f, 0.8f, 0.8f };
     *phys_pos = (struct phys_pos_comp) { .pos = pos };
 
-    *scale = 0.55f;
+    *scale = 0.25f;
+    sph->r = *scale;
 }
 
 static struct vec3 normalize_screen_coords(int x, int y)
@@ -166,18 +176,27 @@ int main(void)
     int n_particles = 0;
     int i;
     int ret = 0;
+
     struct vec3 spawn_point = { 0.0f, 0.25f, 0.0f };
     int particle_rate = 20;
-    const struct system_reg *systems[] = {
+
+    struct phys_col_world phys_col_world;
+
+    struct {
+        const struct system_reg *sys_reg;
+        void *aux_ctx;
+    } systems[] = {
 #if 0
-        &phys_gravity_sys,
+        { &phys_gravity_sys, NULL },
 #else
-        &phys_gravity_batch_sys,
+        { &phys_gravity_batch_sys, NULL },
 #endif
-        &phys_drag_sys,
-        &phys_integrate_sys,
-        &phys_wall_col_sys,
-        &phys_post_col_sys,
+        { &phys_drag_sys, NULL },
+        { &phys_integrate_sys, NULL },
+        { &phys_wall_col_sys, NULL },
+        { &phys_post_col_sys, NULL },
+        { &phys_sphere_col_build_sys, &phys_col_world },
+        { &phys_sphere_col_sys, &phys_col_world },
     };
 
     SDL_Window *win;
@@ -228,6 +247,7 @@ int main(void)
 
     decs_init(&decs);
     ttf_init(rend, win, NULL);
+    phys_col_world_init(&phys_col_world);
 
     vs_id = load_shader_file("./particle_vs.glsl", GL_VERTEX_SHADER);
     if (!vs_id) {
@@ -297,11 +317,16 @@ int main(void)
                                         sizeof(struct color_comp));
     comp_ids.scale = decs_register_comp(&decs, "scale", sizeof(float));
 
+    comp_ids.phys_sphere_col =
+            decs_register_comp(&decs, "phys_sphere_col",
+                               sizeof(struct phys_sphere_comp));
+
     for (i = 0; i < sizeof(systems) / sizeof(systems[0]); ++i) {
-        ret = decs_register_system(&decs, systems[i], NULL);
+        ret = decs_register_system(&decs, systems[i].sys_reg,
+                                   systems[i].aux_ctx, NULL);
         if (ret < 0) {
             fprintf(stderr, "Error occurred while registering system \"%s\"\n",
-                    systems[i]->name);
+                    systems[i].sys_reg->name);
             goto out_sdl_tear_down;
         }
     }
@@ -335,6 +360,7 @@ int main(void)
             create_particle(&decs, &comp_ids, spawn_point);
 
         decs_tick(&decs);
+        phys_col_world_tick(&phys_col_world);
 
         n_particles = decs.n_entities;
 
