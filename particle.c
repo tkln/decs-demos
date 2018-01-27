@@ -86,7 +86,7 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
     };
 
     *scale = 0.02f + (sinf(eid * 0.007f) + 1.0f) * 0.04f;
-    sph->r = *scale;
+    sph->r = *scale * 0.5f;
 }
 
 static void create_pin(struct decs *decs, const struct comp_ids *comp_ids,
@@ -112,7 +112,7 @@ static void create_pin(struct decs *decs, const struct comp_ids *comp_ids,
     *phys_pos = (struct phys_pos_comp) { .pos = pos };
 
     *scale = 0.25f;
-    sph->r = *scale;
+    sph->r = *scale * 0.5f;
 }
 
 static struct vec3 normalize_screen_coords(int x, int y)
