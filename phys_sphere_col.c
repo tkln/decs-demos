@@ -15,12 +15,11 @@ struct phys_sphere_col_build_ctx {
 };
 
 const struct system_reg phys_sphere_col_build_sys = {
-    .name   = "phys_sphere_col_build",
-    .comps  = STR_ARR("phys_pos", "phys_sphere_col"),
-    .icomps = STR_ARR("phys_dyn"),
-    .func   = phys_sphere_col_build_tick,
-    .deps   = STR_ARR("phys_integrate"),
-    /* TODO figure out the correct deps */
+    .name       = "phys_sphere_col_build",
+    .comps      = STR_ARR("phys_pos", "phys_sphere_col"),
+    .icomps     = STR_ARR("phys_dyn"),
+    .func       = phys_sphere_col_build_tick,
+    .pre_deps   = STR_ARR("phys_integrate"),
 };
 
 static void phys_sphere_col_tick(struct decs *decs, uint64_t eid,
@@ -34,10 +33,11 @@ struct phys_sphere_col_ctx {
 };
 
 const struct system_reg phys_sphere_col_sys = {
-    .name   = "phys_sphere_col",
-    .comps  = STR_ARR("phys_pos", "phys_dyn", "phys_sphere_col"),
-    .func   = phys_sphere_col_tick,
-    .deps   = STR_ARR("phys_sphere_col_build"),
+    .name       = "phys_sphere_col",
+    .comps      = STR_ARR("phys_pos", "phys_dyn", "phys_sphere_col"),
+    .func       = phys_sphere_col_tick,
+    .pre_deps   = STR_ARR("phys_sphere_col_build"),
+    .post_deps  = STR_ARR("phys_post_col"),
 };
 
 struct phys_col_sphere {
