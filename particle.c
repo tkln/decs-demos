@@ -331,6 +331,8 @@ int main(void)
         }
     }
 
+    decs_tick_dryrun(&decs);
+
     while (running) {
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
