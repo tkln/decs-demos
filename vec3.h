@@ -60,4 +60,19 @@ static inline float vec3_norm2(const struct vec3 a)
     return a.x * a.x + a.y * a.y + a.z * a.z;
 }
 
+static inline float vec3_norm(const struct vec3 a)
+{
+    return sqrtf(vec3_norm2(a));
+}
+
+static inline struct vec3 vec3_normalize(const struct vec3 a)
+{
+    return vec3_muls(a, 1.0f / vec3_norm(a));
+}
+
+static inline float vec3_dot(const struct vec3 a, const struct vec3 b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
 #endif

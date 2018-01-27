@@ -69,10 +69,10 @@ static void phys_sphere_col_build_tick(struct decs *decs, uint64_t eid,
     ++world->n_spheres;
 }
 
-static inline int phys_sphere_col_test(struct phys_col_sphere *a,
-                                       struct vec3 bc, float br)
+static inline int phys_sphere_col_test(struct phys_col_sphere a,
+                                       struct phys_col_sphere b)
 {
-    return vec3_norm2(vec3_sub(a->c, bc)) < (a->r + br) * (a->r + br);
+    return vec3_norm2(vec3_sub(a.c, b.c)) < (a.r + b.r) * (a.r + b.r);
 }
 
 static void phys_sphere_col_tick(struct decs *decs, uint64_t eid,
@@ -83,13 +83,23 @@ static void phys_sphere_col_tick(struct decs *decs, uint64_t eid,
     struct phys_dyn_comp *dyn = ctx->phys_dyn_base + eid;
     struct phys_sphere_comp *sph = ctx->phys_sphere_base + eid;
     struct phys_col_world *world = ctx->phys_col_world;
+    struct phys_col_sphere sph_a = {
+        .c = vec3_add(pos->pos, dyn->d_pos),
+        .r = sph->r,
+    };
+    struct phys_col_sphere sph_b;
+    struct vec3 n;
+    struct vec3 v;
     size_t i;
 
-
     for (i = 0; i < world->n_spheres; ++i) {
-        if (phys_sphere_col_test(world->spheres + i, pos->pos, sph->r)) {
-            /* TODO */
-            dyn->vel.y += 0.1f;
+        sph_b = world->spheres[i];
+        if (phys_sphere_col_test(sph_b, sph_a)) {
+            n = vec3_normalize(vec3_sub(sph_b.c, sph_a.c));
+            v = dyn->vel;
+
+            dyn->d_pos = vec3_muls(dyn->d_pos, -1.0f);
+            dyn->vel = vec3_sub(v, vec3_muls(n, 2 * vec3_dot(v, n)));
         }
     }
 }
