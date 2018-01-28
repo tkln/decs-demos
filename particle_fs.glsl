@@ -15,11 +15,13 @@ void main() {
     float d = distance(center_pos.xy, c.xy);
     float a = 1.0f;
 
-    if (d > particle_scale)
+    float s = particle_scale + falloff / 2;
+
+    if (d > s)
         discard;
 
-    if (d > (particle_scale - falloff))  {
-        float fd = (d - (particle_scale - falloff)) / falloff;
+    if (d > (s - falloff))  {
+        float fd = (d - (s - falloff)) / falloff;
         a *= 1.0 - pow(fd * hardness, 3.0);
     }
 
