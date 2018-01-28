@@ -85,7 +85,7 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
         .mass = 7.0f
     };
 
-    *scale = 0.02f + (sinf(eid * 0.007f) + 1.0f) * 0.04f;
+    *scale = 0.02f + (sinf(eid * 0.007f) + 1.0f) * 0.02f;
     sph->r = *scale * 0.5f;
 }
 
