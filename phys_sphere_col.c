@@ -91,15 +91,37 @@ static void phys_sphere_col_tick(struct decs *decs, uint64_t eid,
     struct vec3 n;
     struct vec3 v;
     size_t i;
+    bool clear;
 
-    for (i = 0; i < world->n_spheres; ++i) {
+    for (i = 0, clear = true; i < world->n_spheres && clear; ++i) {
         sph_b = world->spheres[i];
         if (phys_sphere_col_test(sph_b, sph_a)) {
             n = vec3_normalize(vec3_sub(sph_b.c, sph_a.c));
             v = dyn->vel;
 
-            dyn->d_pos = vec3_muls(dyn->d_pos, -1.0f);
+            dyn->d_pos = vec3_muls(dyn->d_pos, -0.1f);
             dyn->vel = vec3_sub(v, vec3_muls(n, 2 * vec3_dot(v, n)));
+            clear = false;
+        }
+    }
+
+    /*
+     * When a collision was detected, the entity was backed out along -d_pos.
+     * In order to properly resolve the collision, it has to be verified that
+     * the new position is also valid. The loop below backs the entity out
+     * until no collisions can be found
+     */
+    while (!clear) {
+        sph_a.c = vec3_add(pos->pos, dyn->d_pos);
+        for (i = 0, clear = true; i < world->n_spheres && clear; ++i) {
+            sph_b = world->spheres[i];
+            if (phys_sphere_col_test(sph_b, sph_a)) {
+                n = vec3_normalize(vec3_sub(sph_b.c, sph_a.c));
+                v = dyn->vel;
+
+                dyn->d_pos = vec3_add(dyn->d_pos, dyn->d_pos);
+                clear = false;
+            }
         }
     }
 }
