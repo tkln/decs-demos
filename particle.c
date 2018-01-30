@@ -85,7 +85,7 @@ void create_particle(struct decs *decs, struct comp_ids *comp_ids,
         .mass = 7.0f
     };
 
-    *scale = 0.02f + (sinf(eid * 0.007f) + 1.0f) * 0.02f;
+    *scale = 0.01f + (sinf(eid * 0.007f) + 1.0f) * 0.01f;
     sph->r = *scale * 0.5f;
 }
 
@@ -168,14 +168,138 @@ static void render_system_perf_stats(const struct decs *decs)
     }
 }
 
+enum {
+    VA_IDX_VERT,
+    VA_IDX_POS,
+    VA_IDX_COLOR,
+    VA_IDX_SCALE,
+};
+
+struct render {
+    GLuint vao_id;
+    GLuint vertex_vbo_id;
+    GLuint particle_pos_vbo_id;
+    GLuint particle_color_vbo_id;
+    GLuint particle_scale_vbo_id;
+    GLuint shader_prog_id;
+
+};
+
+int render_init(struct render *r)
+{
+    GLuint vs_id;
+    GLuint fs_id;
+
+    vs_id = load_shader_file("./particle_vs.glsl", GL_VERTEX_SHADER);
+    if (!vs_id)
+        return -1;
+
+    fs_id = load_shader_file("./particle_fs.glsl", GL_FRAGMENT_SHADER);
+    if (!fs_id)
+        return -1;
+
+    r->shader_prog_id = link_shader_prog(fs_id, vs_id, SHADER_LAST);
+    if (!r->shader_prog_id)
+        return -1;
+
+    glGenVertexArrays(1, &r->vao_id);
+    glBindVertexArray(r->vao_id);
+
+    glGenBuffers(1, &r->vertex_vbo_id);
+    glBindBuffer(GL_ARRAY_BUFFER, r->vertex_vbo_id);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(triangle_verts), triangle_verts,
+                 GL_STATIC_DRAW);
+
+    glGenBuffers(1, &r->particle_pos_vbo_id);
+    glBindBuffer(GL_ARRAY_BUFFER, r->particle_pos_vbo_id);
+
+    glGenBuffers(1, &r->particle_color_vbo_id);
+    glBindBuffer(GL_ARRAY_BUFFER, r->particle_color_vbo_id);
+
+    glGenBuffers(1, &r->particle_scale_vbo_id);
+    glBindBuffer(GL_ARRAY_BUFFER, r->particle_scale_vbo_id);
+
+    glUseProgram(r->shader_prog_id);
+
+    glEnableVertexAttribArray(VA_IDX_VERT);
+    glBindBuffer(GL_ARRAY_BUFFER, r->vertex_vbo_id);
+    glVertexAttribPointer(VA_IDX_VERT, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glEnableVertexAttribArray(VA_IDX_POS);
+    glBindBuffer(GL_ARRAY_BUFFER, r->particle_pos_vbo_id);
+    glVertexAttribPointer(VA_IDX_POS, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(struct phys_dyn_comp), 0);
+
+    glEnableVertexAttribArray(VA_IDX_COLOR);
+    glBindBuffer(GL_ARRAY_BUFFER, r->particle_color_vbo_id);
+    glVertexAttribPointer(VA_IDX_COLOR, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glEnableVertexAttribArray(VA_IDX_SCALE);
+    glBindBuffer(GL_ARRAY_BUFFER, r->particle_scale_vbo_id);
+    glVertexAttribPointer(VA_IDX_COLOR, 1, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glVertexAttribDivisor(VA_IDX_VERT, 0); /* Vertices aren't instanced */
+    /* Particle positions and colors are unique to each instance */
+    glVertexAttribDivisor(VA_IDX_POS, 1);
+    glVertexAttribDivisor(VA_IDX_COLOR, 1);
+    glVertexAttribDivisor(VA_IDX_SCALE, 1);
+
+    return 0;
+}
+
+void render_do(const struct render *r, const struct decs *decs,
+               const struct comp_ids *comp_ids,
+               size_t n_particles)
+{
+    glBindVertexArray(r->vao_id);
+    glBindBuffer(GL_ARRAY_BUFFER, r->particle_pos_vbo_id);
+    glBufferData(GL_ARRAY_BUFFER,
+                 n_particles * sizeof(struct phys_pos_comp), NULL,
+                 GL_STREAM_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0,
+                    n_particles * sizeof(struct phys_pos_comp),
+                    decs->comps[comp_ids->phys_pos].data);
+    glVertexAttribPointer(VA_IDX_POS, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, r->particle_color_vbo_id);
+    glBufferData(GL_ARRAY_BUFFER, n_particles * sizeof(struct vec3), NULL,
+                 GL_STREAM_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, n_particles * sizeof(struct vec3),
+                    decs->comps[comp_ids->color].data);
+    glVertexAttribPointer(VA_IDX_COLOR, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, r->particle_scale_vbo_id);
+    glBufferData(GL_ARRAY_BUFFER, n_particles * sizeof(float), NULL,
+                 GL_STREAM_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, n_particles * sizeof(float),
+                    decs->comps[comp_ids->scale].data);
+    glVertexAttribPointer(VA_IDX_SCALE, 1, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glEnableVertexAttribArray(VA_IDX_VERT);
+    glEnableVertexAttribArray(VA_IDX_POS);
+    glEnableVertexAttribArray(VA_IDX_COLOR);
+    glEnableVertexAttribArray(VA_IDX_SCALE);
+
+    glUseProgram(r->shader_prog_id);
+
+    glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, n_particles);
+
+    glDisableVertexAttribArray(VA_IDX_VERT);
+    glDisableVertexAttribArray(VA_IDX_POS);
+    glDisableVertexAttribArray(VA_IDX_SCALE);
+}
+
 int main(void)
 {
     struct decs decs;
     struct comp_ids comp_ids;
     int running = 1;
-    int n_particles = 0;
-    int i;
     int ret = 0;
+    int err;
+    int i;
 
     struct vec3 spawn_point = { 0.0f, 0.25f, 0.0f };
     int particle_rate = 20;
@@ -203,24 +327,9 @@ int main(void)
     SDL_Renderer *rend;
     SDL_Event event;
     SDL_GLContext sdl_gl_ctx;
+    struct render render;
 
     /* TODO Clean these up */
-
-    GLuint vao_id;
-    GLuint vertex_vbo_id;
-    GLuint particle_pos_vbo_id;
-    GLuint particle_color_vbo_id;
-    GLuint particle_scale_vbo_id;
-    GLuint vs_id;
-    GLuint fs_id;
-    GLuint shader_prog_id;
-
-    enum {
-        VA_IDX_VERT,
-        VA_IDX_POS,
-        VA_IDX_COLOR,
-        VA_IDX_SCALE,
-    };
 
     SDL_Init(SDL_INIT_EVERYTHING);
 
@@ -248,66 +357,12 @@ int main(void)
     decs_init(&decs);
     ttf_init(rend, win, NULL);
     phys_col_world_init(&phys_col_world);
-
-    vs_id = load_shader_file("./particle_vs.glsl", GL_VERTEX_SHADER);
-    if (!vs_id) {
+    err = render_init(&render);
+    if (err) {
+        fprintf(stderr, "Render init failed\n");
         ret = EXIT_FAILURE;
         goto out_sdl_tear_down;
     }
-
-    fs_id = load_shader_file("./particle_fs.glsl", GL_FRAGMENT_SHADER);
-    if (!fs_id) {
-        ret = EXIT_FAILURE;
-        goto out_sdl_tear_down;
-    }
-
-    shader_prog_id = link_shader_prog(fs_id, vs_id, SHADER_LAST);
-    if (!shader_prog_id) {
-        ret = EXIT_FAILURE;
-        goto out_sdl_tear_down;
-    }
-
-    glGenVertexArrays(1, &vao_id);
-    glBindVertexArray(vao_id);
-
-    glGenBuffers(1, &vertex_vbo_id);
-    glBindBuffer(GL_ARRAY_BUFFER, vertex_vbo_id);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(triangle_verts), triangle_verts,
-                 GL_STATIC_DRAW);
-
-    glGenBuffers(1, &particle_pos_vbo_id);
-    glBindBuffer(GL_ARRAY_BUFFER, particle_pos_vbo_id);
-
-    glGenBuffers(1, &particle_color_vbo_id);
-    glBindBuffer(GL_ARRAY_BUFFER, particle_color_vbo_id);
-
-    glGenBuffers(1, &particle_scale_vbo_id);
-    glBindBuffer(GL_ARRAY_BUFFER, particle_scale_vbo_id);
-
-    glUseProgram(shader_prog_id);
-
-    glEnableVertexAttribArray(VA_IDX_VERT);
-    glBindBuffer(GL_ARRAY_BUFFER, vertex_vbo_id);
-    glVertexAttribPointer(VA_IDX_VERT, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-    glEnableVertexAttribArray(VA_IDX_POS);
-    glBindBuffer(GL_ARRAY_BUFFER, particle_pos_vbo_id);
-    glVertexAttribPointer(VA_IDX_POS, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(struct phys_dyn_comp), 0);
-
-    glEnableVertexAttribArray(VA_IDX_COLOR);
-    glBindBuffer(GL_ARRAY_BUFFER, particle_color_vbo_id);
-    glVertexAttribPointer(VA_IDX_COLOR, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-    glEnableVertexAttribArray(VA_IDX_SCALE);
-    glBindBuffer(GL_ARRAY_BUFFER, particle_scale_vbo_id);
-    glVertexAttribPointer(VA_IDX_COLOR, 1, GL_FLOAT, GL_FALSE, 0, 0);
-
-    glVertexAttribDivisor(VA_IDX_VERT, 0); /* Vertices aren't instanced */
-    /* Particle positions and colors are unique to each instance */
-    glVertexAttribDivisor(VA_IDX_POS, 1);
-    glVertexAttribDivisor(VA_IDX_COLOR, 1);
-    glVertexAttribDivisor(VA_IDX_SCALE, 1);
 
     comp_ids.phys_pos = decs_register_comp(&decs, "phys_pos",
                                            sizeof(struct phys_pos_comp));
@@ -322,11 +377,12 @@ int main(void)
                                sizeof(struct phys_sphere_comp));
 
     for (i = 0; i < sizeof(systems) / sizeof(systems[0]); ++i) {
-        ret = decs_register_system(&decs, systems[i].sys_reg,
+        err = decs_register_system(&decs, systems[i].sys_reg,
                                    systems[i].aux_ctx, NULL);
-        if (ret < 0) {
+        if (err < 0) {
             fprintf(stderr, "Error occurred while registering system \"%s\"\n",
                     systems[i].sys_reg->name);
+            ret = EXIT_FAILURE;
             goto out_sdl_tear_down;
         }
     }
@@ -364,47 +420,7 @@ int main(void)
         decs_tick(&decs);
         phys_col_world_tick(&phys_col_world);
 
-        n_particles = decs.n_entities;
-
-        glBindVertexArray(vao_id);
-        glBindBuffer(GL_ARRAY_BUFFER, particle_pos_vbo_id);
-        glBufferData(GL_ARRAY_BUFFER,
-                     n_particles * sizeof(struct phys_pos_comp), NULL,
-                     GL_STREAM_DRAW);
-        glBufferSubData(GL_ARRAY_BUFFER, 0,
-                        n_particles * sizeof(struct phys_pos_comp),
-                        decs.comps[comp_ids.phys_pos].data);
-        glVertexAttribPointer(VA_IDX_POS, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-        glBindBuffer(GL_ARRAY_BUFFER, particle_color_vbo_id);
-        glBufferData(GL_ARRAY_BUFFER, n_particles * sizeof(struct vec3), NULL,
-                     GL_STREAM_DRAW);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, n_particles * sizeof(struct vec3),
-                        decs.comps[comp_ids.color].data);
-        glVertexAttribPointer(VA_IDX_COLOR, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-        glBindBuffer(GL_ARRAY_BUFFER, particle_scale_vbo_id);
-        glBufferData(GL_ARRAY_BUFFER, n_particles * sizeof(float), NULL,
-                     GL_STREAM_DRAW);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, n_particles * sizeof(float),
-                        decs.comps[comp_ids.scale].data);
-        glVertexAttribPointer(VA_IDX_SCALE, 1, GL_FLOAT, GL_FALSE, 0, 0);
-
-        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        glEnableVertexAttribArray(VA_IDX_VERT);
-        glEnableVertexAttribArray(VA_IDX_POS);
-        glEnableVertexAttribArray(VA_IDX_COLOR);
-        glEnableVertexAttribArray(VA_IDX_SCALE);
-
-        glUseProgram(shader_prog_id);
-
-        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, n_particles);
-
-        glDisableVertexAttribArray(VA_IDX_VERT);
-        glDisableVertexAttribArray(VA_IDX_POS);
-        glDisableVertexAttribArray(VA_IDX_SCALE);
+        render_do(&render, &decs, &comp_ids, decs.n_entities);
 
         render_system_perf_stats(&decs);
 
