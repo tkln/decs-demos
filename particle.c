@@ -162,7 +162,7 @@ static void render_system_perf_stats(const struct decs *decs)
         ttf_printf(0, pt_size * (1 + i * n_prints), "%s:", decs->systems[i].name);
         for (j = 0; j < ARRAY_SIZE(prints); ++j) {
             long long val = ((long long *)stats)[j];
-            ttf_printf(64, pt_size * (2 + j + i * n_prints), "%s %lld, (%.2f)",
+            ttf_printf(64, pt_size * (2 + j + i * n_prints), "%s %d, (%.2f)",
                        prints[j].name, val, (double)val / decs->n_entities);
         }
     }
