@@ -13,6 +13,7 @@
 #include "shader.h"
 #include "decs/decs.h"
 #include "phys_sphere_col.h"
+#include "decs/sb.h"
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
 
@@ -156,14 +157,15 @@ static void render_system_perf_stats(const struct decs *decs)
 
     const unsigned n_prints = ARRAY_SIZE(prints) + 1;
 
-    ttf_printf(0, 0, "entity count: %zu", decs->n_entities);
-    for (i = 0; i < decs->n_systems; ++i) {
+    ttf_printf(0, 0, "entity count: %zu", sb_size(decs->entity_comp_map));
+    for (i = 0; i < sb_size(decs->systems); ++i) {
         stats = &decs->systems[i].perf_stats;
         ttf_printf(0, pt_size * (1 + i * n_prints), "%s:", decs->systems[i].name);
         for (j = 0; j < ARRAY_SIZE(prints); ++j) {
             long long val = ((long long *)stats)[j];
             ttf_printf(64, pt_size * (2 + j + i * n_prints), "%s %d, (%.2f)",
-                       prints[j].name, val, (double)val / decs->n_entities);
+                       prints[j].name, val,
+                       (double)val / sb_size(decs->entity_comp_map));
         }
     }
 }
@@ -420,7 +422,7 @@ int main(void)
         decs_tick(&decs);
         phys_col_world_tick(&phys_col_world);
 
-        render_do(&render, &decs, &comp_ids, decs.n_entities);
+        render_do(&render, &decs, &comp_ids, sb_size(decs.entity_comp_map));
 
         render_system_perf_stats(&decs);
 
